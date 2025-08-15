@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Room {{ room.code }} - Pilih Produk{% endblock %}
+
+{% block content %}
+<h1>Room: {{ room.code }} {% if room.nama %} ({{ room.nama }}){% endif %}</h1>
+<p>
+  <a href="{{ url_for('room_cart', code=room.code) }}">Lihat Keranjang</a> |
+  <a href="{{ url_for('rooms_list') }}">← Kembali ke daftar Room</a>
+</p>
+
+<form method="get">
+  <input type="text" id="q" placeholder="Cari..." oninput="filterList()" />
+</form>
+
+<ul id="list">
+{% for p in daftar_produk %}
+  <li data-name="{{ p.nama|lower }}">
+    {% if p.foto %}
+      <img src="{{ url_for('static', filename='uploads/' ~ p.foto) }}" alt="" width="48" />
+    {% endif %}
+    <strong>{{ p.nama }}</strong> – Rp {{ "{:,}".format(p.harga) }} – Stok: {{ p.stok }}
+    <form action="{{ url_for('room_add', code=room.code) }}" method="post" style="display:inline;">
+      <input type="hidden" name="produk_id" value="{{ p.id }}">
+      <input type="number" name="jumlah" value="1" min="1" style="width:60px;">
+      <button type="submit">Tambah</button>
+    </form>
+  </li>
+{% else %}
+  <li>Tidak ada produk.</li>
+{% endfor %}
+</ul>
+
+<script>
+function filterList(){
+  const q = (document.getElementById('q').value||'').toLowerCase().trim();
+  document.querySelectorAll('#list > li').forEach(li=>{
+    const n = (li.dataset.name||'');
+    li.style.display = (!q || n.includes(q)) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Daftar Customer{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card-bg:#fff;
+    --border:#e6e8f0;
+    --text:#111827;
+    --muted:#6b7280;
+    --brand:#007bff;
+    --brand-hover:#0064cf;
+    --danger:#dc3545;
+    --danger-hover:#bb2d3b;
+    --ring: rgba(0,123,255,.25);
+    --radius: 12px;
+    --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+  }
+
+  .page-title{
+    margin: 0 0 6px;
+    text-align:center;
+    letter-spacing:.2px;
+  }
+  .subnote{
+    text-align:center;
+    margin-bottom: 14px;
+    color:var(--muted);
+    font-size: 13px;
+  }
+
+  /* Toolbar */
+  .toolbar{
+    display:flex; gap:10px; flex-wrap:wrap;
+    align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .toolbar-left{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .search{
+    position:relative;
+  }
+  .search input{
+    width: 260px; max-width: 80vw;
+    padding:10px 12px 10px 36px;
+    border:1px solid var(--border); border-radius: 999px;
+    outline:none; transition: box-shadow .15s ease, border-color .15s ease;
+    background:#fff;
+  }
+  .search input:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+  .search .icon{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    color:#9aa1a9; font-size:14px;
+  }
+  .toolbar-right a.btn{
+    background:var(--brand); color:#fff; padding:10px 12px; border-radius: 10px; text-decoration:none;
+    font-weight:700;
+  }
+  .toolbar-right a.btn:hover{ background:var(--brand-hover); }
+
+  /* Tabel modern (desktop) */
+  .table-wrap{ overflow-x:auto; border-radius: 10px; }
+  .table-modern{
+    width:100%; border-collapse:collapse; background:#fff;
+    border-radius:10px; overflow:hidden; border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  .table-modern thead th{
+    background:#f8fafc; color:#334155;
+    font-weight:700; padding:12px; text-align:left;
+    border-bottom: 1px solid #e9eef5;
+  }
+  .table-modern tbody td{
+    padding:12px; border-bottom:1px solid #f0f3f7;
+  }
+  .table-modern tfoot td, .table-modern tfoot th{
+    background:#f9fafb; padding:12px; border-top:1px solid #edf2f7;
+  }
+  .td-actions{ text-align:center; white-space:nowrap; }
+  .muted{ color:var(--muted); }
+
+  .btn-sm{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:8px 10px; border-radius:8px; border:none; cursor:pointer;
+    font-weight:700; color:#ffffff; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  }
+  .btn-edit{ background:var(--brand); text-decoration:none; }
+  .btn-edit:hover{ background:var(--brand-hover); }
+  .btn-del{ background:var(--danger); }
+  .btn-del:hover{ background:var(--danger-hover); }
+  .actions-inline form{ display:inline; }
+
+  /* Kartu (mobile) */
+  .cards{ display:none; flex-direction:column; gap:10px; }
+  .card{
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:12px; display:flex; gap:12px; align-items:flex-start;
+    box-shadow: var(--shadow-sm);
+  }
+  .card .info{ flex:1; min-width:0; }
+  .cname{ font-weight:800; color:var(--text); margin-bottom:4px; }
+  .meta-row{ display:flex; gap:12px; flex-wrap:wrap; color:#334155; font-size:13px; }
+  .chip{
+    display:inline-flex; gap:6px; align-items:center;
+    background:#f3f4f6; border:1px solid #eceff3; border-radius:999px; padding:4px 10px;
+  }
+  .cta{ display:flex; gap:8px; }
+  .cta form{ display:inline; }
+
+  .empty{
+    text-align:center; color:#6b7280;
+    background:#fff; border:1px dashed #dfe3ea; padding:18px; border-radius:12px;
+  }
+
+  @media (max-width: 720px){
+    .table-wrap{ display:none; }
+    .cards{ display:flex; }
+    .toolbar-right a.btn{ padding:9px 12px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Daftar Customer</h1>
+<p class="subnote">Kelola customer: tambah, ubah, atau hapus. Gunakan pencarian untuk menemukan data lebih cepat.</p>
+
+<div class="toolbar">
+  <div class="toolbar-left">
+    <div class="search">
+      <span class="icon">🔎</span>
+      <input type="text" id="q" placeholder="Cari nama/email/telepon..." aria-label="Cari customer" oninput="filterCustomers()">
+    </div>
+  </div>
+  <div class="toolbar-right">
+    <a href="{{ url_for('customer_tambah') }}" class="btn">+ Tambah Customer</a>
+  </div>
+</div>
+
+{% if customers %}
+  <!-- Tabel (desktop) -->
+  <div class="table-wrap">
+    <table class="table-modern" id="tableCustomer">
+      <thead>
+        <tr>
+          <th>Nama</th>
+          <th>Email</th>
+          <th>No Telepon</th>
+          <th>Alamat</th>
+          <th class="td-actions">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr data-name="{{ (c.nama ~ ' ' ~ c.email ~ ' ' ~ (c.no_telepon or '') )|lower }}">
+          <td><strong>{{ c.nama }}</strong></td>
+          <td>{{ c.email }}</td>
+          <td>{{ c.no_telepon or '-' }}</td>
+          <td class="muted">{{ c.alamat or '-' }}</td>
+          <td class="td-actions actions-inline">
+            <a href="{{ url_for('customer_edit', id=c.id) }}" class="btn-sm btn-edit">🖊 Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Cards (mobile) -->
+  <div class="cards" id="cardsCustomer">
+    {% for c in customers %}
+    <div class="card" data-name="{{ (c.nama ~ ' ' ~ c.email ~ ' ' ~ (c.no_telepon or '') )|lower }}">
+      <div class="info">
+        <div class="cname">{{ c.nama }}</div>
+        <div class="meta-row">
+          <span class="chip">Email: <strong>{{ c.email }}</strong></span>
+          <span class="chip">Telp: <strong>{{ c.no_telepon or '-' }}</strong></span>
+        </div>
+        <div class="muted" style="margin-top:6px;">Alamat: {{ c.alamat or '-' }}</div>
+      </div>
+      <div class="cta">
+        <a href="{{ url_for('customer_edit', id=c.id) }}" class="btn-sm btn-edit" title="Edit">🖊</a>
+        <form action="{{ url_for('customer_hapus', id=c.id) }}" method="post" onsubmit="return confirm('Yakin hapus customer ini?');">
+          <button type="submit" class="btn-sm btn-del" title="Hapus">🗑</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">Belum ada customer. Klik <strong>+ Tambah Customer</strong> untuk menambahkan.</div>
+{% endif %}
+
+<script>
+  function filterCustomers(){
+    const q = (document.getElementById('q').value || '').toLowerCase().trim();
+
+    // Tabel
+    const rows = document.querySelectorAll('#tableCustomer tbody tr');
+    rows.forEach(tr => {
+      const name = (tr.getAttribute('data-name') || '');
+      tr.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+
+    // Cards
+    const cards = document.querySelectorAll('#cardsCustomer .card');
+    cards.forEach(card => {
+      const name = (card.getAttribute('data-name') || '');
+      card.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+  }
+</script>
+{% endblock %}

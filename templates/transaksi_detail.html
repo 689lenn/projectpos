@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Detail Transaksi #{{ transaksi.id }}{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card:#fff; --border:#e6e8f0; --muted:#6b7280; --text:#111827;
+    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
+    --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
+  }
+  .page-wrap { max-width: 960px; margin: 0 auto; }
+  .page-head {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; margin-bottom:12px;
+  }
+  .title { margin:0; font-size: 20px; }
+  .muted { color: var(--muted); }
+
+  .actions { display:flex; gap:8px; flex-wrap: wrap; }
+  .btn {
+    border:none; border-radius:10px; padding:10px 12px; cursor:pointer;
+    background: var(--brand); color:#fff; font-weight:700;
+  }
+  .btn:hover { background: var(--brand-hover); }
+  .btn-muted { background:#6c757d; }
+  .btn-muted:hover { filter: brightness(.95); }
+
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 14px;
+  }
+
+  /* ===== Receipt style ===== */
+  .receipt-wrap { display:flex; flex-direction:column; gap:12px; }
+
+  .receipt {
+    background: #fff;
+    border:1px dashed #cfd6e1;
+    border-radius: 12px;
+    max-width: 380px; /* tampil di layar */
+    margin: 0 auto;
+    padding: 14px 14px 18px;
+    font-family: 'Courier New', Courier, monospace; /* nuansa thermal */
+  }
+  .r-head { text-align:center; }
+  .r-brand { font-weight: 800; font-size: 18px; letter-spacing: .8px; }
+  .r-meta  { font-size: 12px; color: #6b7280; margin-top:2px; }
+  .r-line  { border-top: 1px dashed #cfd6e1; margin: 8px 0; }
+  .r-row   { display:flex; align-items:flex-start; justify-content:space-between; gap:6px; font-size: 13px; }
+  .r-bold  { font-weight: 700; }
+  .r-right { text-align: right; }
+  .r-items { margin-top: 6px; }
+  .r-item-name { font-weight:700; }
+  .r-item-sub { font-size:12px; color:#6b7280; }
+
+  .r-total-box { margin-top: 6px; }
+  .r-total-box .r-row { font-size: 14px; }
+  .r-total { font-size: 16px; }
+
+  .r-footer { margin-top: 12px; text-align:center; font-size:12px; color: #6b7280; }
+
+  /* Print khusus: sembunyikan semua kecuali .receipt */
+  @media print {
+    @page {
+      size: 80mm auto; /* akan bekerja di beberapa browser/driver thermal */
+      margin: 4mm;
+    }
+    body * { visibility: hidden; }
+    .receipt, .receipt * { visibility: visible; }
+    .receipt {
+      position: absolute; left: 0; top: 0;
+      max-width: unset; width: 80mm; margin: 0; border: none;
+      box-shadow: none;
+      font-size: 12px;
+    }
+    .btn, .actions, .page-head, .flash-wrap { display: none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="page-head">
+    <div>
+      <h1 class="title">Detail Transaksi #{{ transaksi.id }}</h1>
+      <div class="muted">Tanggal: {{ transaksi.tanggal|format_tanggal }}</div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="window.print()">🖨️ Cetak</button>
+      <button class="btn btn-muted" onclick="shareNota()">🔗 Share</button>
+      <a href="{{ url_for('transaksi_list') }}" class="btn btn-muted">← Kembali</a>
+    </div>
+  </div>
+
+  <div class="card receipt-wrap">
+    <!-- NOTA -->
+    <div id="nota" class="receipt">
+      <div class="r-head">
+        <div class="r-brand">ROMA TOP</div>
+        <div class="r-meta">0851 628 11 628</div>
+      </div>
+
+      <div class="r-line"></div>
+
+      <div class="r-row">
+        <div>No. Trx: <span class="r-bold">#{{ transaksi.id }}</span></div>
+        <div class="r-right">Tgl: {{ transaksi.tanggal|format_tanggal }}</div>
+      </div>
+      <div class="r-row">
+        <div>Pelanggan:</div>
+        <div class="r-right">
+          {% if transaksi.customer %}
+            {{ transaksi.customer.nama }}
+          {% else %}
+            <span class="muted">-</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="r-line"></div>
+      <div class="r-items">
+        {% for it in transaksi.item_transaksi %}
+          {% set p = it.produk %}
+          {% set h = p.harga %}
+          {% set sub = h * it.jumlah %}
+          <div class="r-row">
+            <div>
+              <div class="r-item-name">{{ p.nama }}</div>
+              <div class="r-item-sub">{{ h | rupiah }} × {{ it.jumlah }}</div>
+            </div>
+            <div class="r-right">{{ sub | rupiah }}</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="r-line"></div>
+
+      <div class="r-total-box">
+        <div class="r-row">
+          <div>Total</div>
+          <div class="r-right r-bold r-total">{{ transaksi.total | rupiah }}</div>
+        </div>
+        <div class="r-row">
+          <div>Bayar</div>
+          <div class="r-right">{{ transaksi.bayar or 0 }}</div>
+        </div>
+        <div class="r-row">
+          <div>Kembalian</div>
+          <div class="r-right">{{ transaksi.kembalian or 0 }}</div>
+        </div>
+      </div>
+
+      <div class="r-line"></div>
+      <div class="r-footer">
+        Terima kasih 🙏<br/>Simpan nota ini sebagai bukti transaksi.
+      </div>
+    </div>
+
+    <div class="muted" style="font-size:12px;">
+      <strong>Catatan:</strong> Harga item pada nota menggunakan harga produk saat ini.
+      Total transaksi tersimpan adalah {{ transaksi.total | rupiah }}.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Format rupiah di server via filter 'rupiah'. Di klien untuk share/print tidak perlu.
+
+  async function shareNota(){
+    const shareData = {
+      title: 'Transaksi #{{ transaksi.id }}',
+      text: 'Nota transaksi #{{ transaksi.id }} — total {{ transaksi.total | rupiah }}',
+      url: window.location.href
+    };
+    if (navigator.share){
+      try{
+        await navigator.share(shareData);
+      }catch(e){
+        // dibatalkan user, silent
+      }
+    }else{
+      // fallback: salin URL
+      try{
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link nota disalin ke clipboard.');
+      }catch(e){
+        prompt('Salin link nota ini:', window.location.href);
+      }
+    }
+  }
+</script>
+{% endblock %}

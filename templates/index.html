@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+{% block title %}Pilih Produk{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card-bg:#fff;
+    --border:#eaeaea;
+    --muted:#6b7280;
+    --text:#111827;
+    --brand:#007bff;
+    --brand-hover:#0064cf;
+    --ring: rgba(0,123,255,.25);
+    --radius: 12px;
+    --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+    --ok:#16a34a; --zero:#9aa1a9; --neg:#ef4444;
+    --fab:#0ea5e9; --fab-hover:#0b8cc7;
+  }
+
+  .section-title{ margin: 0 0 8px; text-align:center; letter-spacing:.2px; }
+
+  /* Toolbar utama */
+  .toolbar {
+    display:flex; gap:10px; flex-wrap:wrap;
+    align-items:center; justify-content:space-between;
+    margin: 6px 0 12px 0;
+  }
+  .toolbar-left {
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  }
+  .search { position:relative; }
+  .search input {
+    width: 260px; max-width: 92vw;
+    padding:10px 12px 10px 36px;
+    border:1px solid var(--border); border-radius: 999px;
+    outline:none; transition: box-shadow .15s ease, border-color .15s ease;
+    background:#fff;
+  }
+  .search input:focus { border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+  .search .icon {
+    position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9aa1a9; font-size:14px;
+  }
+
+  .select, .checkbox {
+    background:#fff; border:1px solid var(--border); border-radius: 10px; padding:8px 10px;
+  }
+  .select select {
+    border:none; outline:none; background:transparent; font-size:14px; color:#333;
+  }
+  .checkbox label { display:flex; gap:8px; align-items:center; cursor:pointer; }
+
+  /* Chips scroll (Kategori & Rooms) */
+  .chips-wrap { margin: 8px 0 12px; }
+  .chips-title { font-size: 13px; color:var(--muted); margin: 0 0 6px; }
+  .chips-scroll {
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;
+    scrollbar-width: thin;
+  }
+  .chip {
+    flex: 0 0 auto;
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid var(--border); border-radius: 999px;
+    padding:6px 12px; background:#fff; cursor:pointer; user-select:none;
+    transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color:#d7d7d7; box-shadow: var(--shadow-sm); }
+  .chip.active { background:#e9f2ff; border-color:#cfe3ff; }
+  .chip .dot { width:8px; height:8px; border-radius:50%; background:#9aa1a9; }
+
+  .chip.room { padding:6px 10px; }
+  .chip.room.active { background:#eafff3; border-color:#c7f0d7; }
+  .chip.add { background:#0ea5e9; color:#fff; border-color:#0ea5e9; }
+  .chip.add:hover { filter: brightness(.95); }
+
+  /* List produk (cards) */
+  .product-list { display:flex; flex-direction:column; gap:10px; }
+  .card {
+    background: var(--card-bg);
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 10px;
+    display:flex; gap:12px; align-items:center;
+    cursor:pointer; user-select:none; transition: transform .08s ease, box-shadow .15s ease, border-color .2s ease;
+  }
+  .card:hover { transform: translateY(-1px); box-shadow: var(--shadow); border-color:#dedede; }
+  .thumb {
+    width:64px; height:64px; flex:0 0 64px; object-fit:cover;
+    border-radius:10px; border:1px solid #e6e6e6; background:#f6f7fb;
+  }
+  .details { flex:1; min-width:0; }
+  .name { font-weight:700; margin:0 0 4px 0; color:var(--text); font-size:15px; }
+  .meta { display:flex; gap:10px; flex-wrap:wrap; color:#445; font-size:13px; }
+  .chip-meta {
+    display:inline-flex; gap:6px; align-items:center;
+    background:#f3f4f6; border:1px solid #eceff3; border-radius:999px; padding:4px 10px;
+  }
+  .chip-meta .dot { width:6px; height:6px; border-radius:50%; }
+  .chip-meta.price .dot { background:#00b894; }
+  .chip-meta.stock .dot.stock-pos { background: var(--ok); }
+  .chip-meta.stock .dot.stock-zero { background: var(--zero); }
+  .chip-meta.stock .dot.stock-neg { background: var(--neg); }
+
+  /* Modal qty + harga */
+  .modal-backdrop{position:fixed; inset:0; background:rgba(16,24,40,.4); display:none; align-items:center; justify-content:center; z-index:2000;}
+  .modal-backdrop.show{display:flex;}
+  .modal{
+    width:min(460px, 92vw); background:#fff; border-radius:14px; box-shadow:0 30px 60px rgba(0,0,0,.2);
+    overflow:hidden; animation:fadeIn .12s ease;
+  }
+  @keyframes fadeIn{from{opacity:.5; transform: translateY(8px);} to{opacity:1; transform: translateY(0);}}
+  .modal-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #eef1f5;}
+  .modal-title{font-weight:800; letter-spacing:.3px;}
+  .modal-close{border:none; background:transparent; font-size:18px; cursor:pointer; color:#6b7280;}
+  .modal-body{padding:14px 16px;}
+  .label{font-size:12px; color:#6b7280; display:block; margin-bottom:6px;}
+  .row{display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;}
+
+  .control{
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:10px; font-size:14px; outline:none; background:#fff;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+
+  .qty-box{
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--border); border-radius:10px; padding:8px 10px;
+  }
+  .qty-box input[type="number"]{width:100px; border:none; outline:none; font-size:16px;}
+  .qty-btn{
+    width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    border:1px solid #e5e7eb; border-radius:8px; background:#fff; cursor:pointer;
+  }
+  .qty-btn:disabled{opacity:.4; cursor:not-allowed;}
+
+  .hint{color:#6b7280; font-size:12px; margin-top:6px;}
+  .subtotal{margin-top:10px; font-weight:700;}
+
+  .modal-foot{padding:12px 16px; border-top:1px solid #eef1f5; display:flex; justify-content:flex-end; gap:8px;}
+  .btn{border:none; border-radius:10px; padding:9px 12px; cursor:pointer; font-weight:700;}
+  .btn-cancel{background:#adb5bd; color:#fff;}
+  .btn-ok{background:var(--brand); color:#fff;}
+  .btn-ok:disabled{opacity:.6; cursor:not-allowed;}
+
+  /* Toast */
+  .toast {
+    position: fixed; right: 16px; bottom: 16px;
+    background:#16a34a; color:#fff; padding:10px 14px; border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15);
+    z-index: 3000; opacity: 0; transform: translateY(8px);
+    animation: toast-in .25s ease forwards, toast-out .25s ease 2.75s forwards;
+  }
+  .toast.error { background:#dc3545; }
+  @keyframes toast-in { to { opacity: 1; transform: translateY(0); } }
+  @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
+
+  /* FAB Keranjang */
+  .fab-cart{
+    position: fixed; right: 18px; bottom: 18px; z-index: 1800;
+    background: var(--fab); color:#fff; border-radius: 999px; padding: 12px 16px;
+    display:flex; align-items:center; gap:8px; text-decoration:none; font-weight:800;
+    box-shadow: 0 12px 22px rgba(14,165,233,.35);
+    transition: transform .08s ease, background .15s ease;
+  }
+  .fab-cart:hover{ transform: translateY(-1px); background: var(--fab-hover); }
+  .fab-badge{
+    min-width:18px; height:18px; border-radius:999px; background:#fff; color:#0ea5e9; font-size:11px; font-weight:900;
+    display:inline-flex; align-items:center; justify-content:center; padding: 0 6px;
+  }
+
+  @media (max-width: 600px){
+    .search input { width: 200px; }
+    .name { font-size:14px; }
+    .meta { font-size:12px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Pilih Produk</h1>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <div class="search">
+      <span class="icon">🔎</span>
+      <input type="text" id="q" placeholder="Cari produk..." aria-label="Cari produk" oninput="applyFilters()" />
+    </div>
+
+    <div class="select">
+      <select id="sort" aria-label="Urutkan" onchange="applyFilters()">
+        <option value="">Urutkan</option>
+        <option value="price_asc">Harga: terendah</option>
+        <option value="price_desc">Harga: tertinggi</option>
+        <option value="name_asc">Nama: A–Z</option>
+        <option value="name_desc">Nama: Z–A</option>
+      </select>
+    </div>
+
+    <div class="checkbox">
+      <label>
+        <input type="checkbox" id="onlyStock" onchange="applyFilters()" />
+        Stok tersedia saja
+      </label>
+    </div>
+  </div>
+</div>
+
+<!-- Rooms chips -->
+<div class="chips-wrap">
+  <div class="chips-title">Rooms (opsional)</div>
+  <div class="chips-scroll" id="roomsChips">
+    <a class="chip add" href="{{ url_for('room_new') }}">+ Room</a>
+    {% for r in daftar_rooms %}
+      {% if r.status == 'open' %}
+      <span class="chip room {% if current_room and current_room.kode == r.kode %}active{% endif %}"
+            onclick="location.href='{{ url_for('room_switch', kode=r.kode) }}'"
+            title="Pindah ke room {{ r.kode }}">
+        🗂️ {{ r.kode }}
+      </span>
+      {% endif %}
+    {% endfor %}
+    {% if not daftar_rooms %}
+      <span class="chip" style="opacity:.7;">Belum ada room aktif</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Kategori chips -->
+<div class="chips-wrap">
+  <div class="chips-title">Kategori</div>
+  <div class="chips-scroll" id="catsChips">
+    <span class="chip active" data-cat="">Semua</span>
+    {% for k in daftar_kategori %}
+      <span class="chip" data-cat="{{ k.id }}">{{ k.nama }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- List Produk -->
+<div id="productList" class="product-list" aria-live="polite">
+  {% for p in daftar_produk %}
+  {% set stok = p.stok or 0 %}
+  <div class="card"
+       role="button" tabindex="0"
+       data-id="{{ p.id }}"
+       data-name="{{ p.nama|lower }}"
+       data-price="{{ p.harga }}"
+       data-stock="{{ stok }}"
+       data-cat="{{ p.kategori_id or '' }}"
+       onclick="openQtyModal('{{ p.id }}','{{ p.nama|e }}',{{ p.harga }},{{ stok }})"
+       onkeydown="if(event.key==='Enter'||event.key===' '){openQtyModal('{{ p.id }}','{{ p.nama|e }}',{{ p.harga }},{{ stok }}); event.preventDefault();}">
+    {% if p.foto %}
+      <img class="thumb" src="{{ url_for('static', filename='uploads/' ~ p.foto) }}" alt="{{ p.nama }}"
+           onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22&gt;&lt;rect width=%2264%22 height=%2264%22 fill=%22%23f0f0f0%22/&gt;&lt;/svg&gt;';" />
+    {% else %}
+      <img class="thumb" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='%23f0f0f0'/></svg>" alt="no image" />
+    {% endif %}
+    <div class="details">
+      <div class="name">{{ p.nama }}</div>
+      <div class="meta">
+        <span class="chip-meta price">
+          <span class="dot"></span> Harga: <strong>Rp {{ "{:,}".format(p.harga) }}</strong>
+        </span>
+        <span class="chip-meta stock">
+          {% if stok > 0 %}
+            <span class="dot stock-pos"></span>
+            Stok: <strong style="color:var(--ok);">{{ stok }}</strong>
+          {% elif stok == 0 %}
+            <span class="dot stock-zero"></span>
+            Stok: <strong style="color:var(--zero);">0</strong>
+          {% else %}
+            <span class="dot stock-neg"></span>
+            Stok: <strong style="color:var(--neg);">{{ stok }}</strong>
+          {% endif %}
+        </span>
+        {% if p.kategori %}
+          <span class="chip-meta">Kategori: <strong>{{ p.kategori.nama }}</strong></span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p style="text-align:center; color:#6b7280; width:100%;">Tidak ada produk. Silakan tambah produk terlebih dahulu.</p>
+  {% endfor %}
+</div>
+
+<!-- FAB Keranjang -->
+<a href="{{ url_for('keranjang_view') }}" class="fab-cart" aria-label="Buka keranjang">
+  🧺 Keranjang
+  <span id="fabBadge" class="fab-badge">{{ cart_count or 0 }}</span>
+</a>
+
+<!-- MODAL Tambah ke Keranjang -->
+<div id="qtyModalBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qtyTitle">
+    <div class="modal-head">
+      <div class="modal-title" id="qtyTitle">Tambah ke Keranjang</div>
+      <button class="modal-close" onclick="closeQtyModal()" aria-label="Tutup">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="modalForm" method="post" action="{{ url_for('tambah_keranjang') }}" onsubmit="return handleAddToCart(event)">
+        <input type="hidden" name="produk_id" id="mProdukId">
+        <input type="hidden" name="harga_id"  id="mHargaId"> <!-- akan diisi jika pilih preset -->
+
+        <div style="font-weight:800; font-size:16px;" id="mNama"></div>
+
+        <div class="row" style="margin-top:10px;">
+          <div style="flex:1; min-width: 180px;">
+            <label class="label" for="mHargaSelect">Pilih Harga</label>
+            <select id="mHargaSelect" class="control" onchange="onChangeHargaSelect()">
+              <!-- opsi diisi via JS dari HARGA_MAP -->
+            </select>
+            <div class="hint">Pilih salah satu harga preset atau gunakan harga utama/default.</div>
+          </div>
+
+          <div style="flex:1; min-width: 180px;">
+            <label class="label" for="mHargaManual">Harga Manual (opsional)</label>
+            <input id="mHargaManual" type="number" min="0" class="control" placeholder="Kosongkan jika tidak perlu" disabled>
+            <div class="hint">Aktif bila memilih: "Harga Manual".</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div style="flex:1; min-width: 180px;">
+            <label class="label">Jumlah</label>
+            <div class="qty-box">
+              <button type="button" class="qty-btn" id="btnMinus" aria-label="Kurangi" onclick="decQty()">−</button>
+              <input type="number" id="mJumlah" name="jumlah" min="0" value="0" aria-label="Jumlah produk" />
+              <button type="button" class="qty-btn" id="btnPlus" aria-label="Tambah" onclick="incQty()">+</button>
+            </div>
+            <div class="hint">Stok saat ini: <span id="mStok">0</span> (bisa minus saat checkout)</div>
+          </div>
+        </div>
+
+        <div class="subtotal" id="mSubtotal">Subtotal: Rp 0</div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" onclick="closeQtyModal()">Batal</button>
+          <button type="submit" class="btn btn-ok" id="btnAdd" disabled>Tambah</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Harga map dari server -->
+<script>
+  const HARGA_MAP = {{ harga_map|tojson }};
+</script>
+
+<script>
+  // ====== Filter & Sort (client-side) ======
+  const elList  = document.getElementById('productList');
+  const inputQ  = document.getElementById('q');
+  const selSort = document.getElementById('sort');
+  const cbStock = document.getElementById('onlyStock');
+
+  // Kategori chips
+  const catWrap = document.getElementById('catsChips');
+  let selectedCat = ""; // "" = semua
+
+  catWrap?.addEventListener('click', (e)=>{
+    const chip = e.target.closest('.chip');
+    if(!chip) return;
+    const cat = chip.getAttribute('data-cat');
+    selectedCat = (selectedCat === cat) ? "" : (cat || "");
+    catWrap.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    const target = catWrap.querySelector(`.chip[data-cat="${selectedCat}"]`) || catWrap.querySelector('.chip[data-cat=""]');
+    if (target) target.classList.add('active');
+    applyFilters();
+  });
+
+  function applyFilters(){
+    const q = (inputQ?.value || '').toLowerCase().trim();
+    const onlyStock = cbStock?.checked;
+    const cards = Array.from(elList.querySelectorAll('.card'));
+
+    // filter
+    cards.forEach(card => {
+      const name  = card.dataset.name || '';
+      const stock = parseInt(card.dataset.stock || '0', 10);
+      const cat   = card.dataset.cat || '';
+
+      const matchName  = !q || name.includes(q);
+      const matchStock = !onlyStock || stock > 0;
+      const matchCat   = !selectedCat || (selectedCat === cat);
+
+      card.style.display = (matchName && matchStock && matchCat) ? 'flex' : 'none';
+    });
+
+    // sort
+    const sortVal = selSort?.value;
+    const visible = cards.filter(c => c.style.display !== 'none');
+    visible.sort((a,b) => {
+      const pa = parseInt(a.dataset.price||'0',10);
+      const pb = parseInt(b.dataset.price||'0',10);
+      const na = (a.dataset.name||'');
+      const nb = (b.dataset.name||'');
+      if(sortVal === 'price_asc')  return pa - pb;
+      if(sortVal === 'price_desc') return pb - pa;
+      if(sortVal === 'name_asc')   return na.localeCompare(nb);
+      if(sortVal === 'name_desc')  return nb.localeCompare(na);
+      return 0;
+    });
+    visible.forEach(v => elList.appendChild(v));
+  }
+
+  // Jalankan filter awal saat load
+  applyFilters();
+
+  // ====== Modal Qty + Harga ======
+  const qtyBackdrop = document.getElementById('qtyModalBackdrop');
+  const mProdukId   = document.getElementById('mProdukId');
+  const mNama       = document.getElementById('mNama');
+  const mHargaId    = document.getElementById('mHargaId');
+  const mHargaSelect= document.getElementById('mHargaSelect');
+  const mHargaManual= document.getElementById('mHargaManual');
+  const mJumlah     = document.getElementById('mJumlah');
+  const mStok       = document.getElementById('mStok');
+  const mSubtotal   = document.getElementById('mSubtotal');
+  const btnAdd      = document.getElementById('btnAdd');
+  const fabBadge    = document.getElementById('fabBadge');
+
+  let stokMaks = 0;
+  let hargaUtama = 0;
+  let currentPid = null;
+
+  function openQtyModal(pid, nama, harga, stok){
+    currentPid = String(pid);
+    mProdukId.value = pid;
+    mNama.textContent = nama;
+    stokMaks = parseInt(stok,10) || 0;
+    hargaUtama = parseInt(harga,10) || 0;
+    mStok.textContent = stokMaks;
+
+    // Populate select harga berdasarkan HARGA_MAP
+    populateHargaSelect(pid);
+
+    mJumlah.min = 0;
+    mJumlah.value = 0;
+    updateSubtotal();
+
+    qtyBackdrop.classList.add('show');
+    qtyBackdrop.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function populateHargaSelect(pid){
+    mHargaSelect.innerHTML = '';
+    mHargaId.value = '';
+    mHargaManual.value = '';
+    mHargaManual.disabled = true;
+
+    // Opsi: Harga Utama
+    const optUtama = document.createElement('option');
+    optUtama.value = 'utama';
+    optUtama.textContent = `Harga Utama — Rp ${formatNum(hargaUtama)}`;
+    mHargaSelect.appendChild(optUtama);
+
+    // Opsi: preset dari ProdukHarga
+    const map = HARGA_MAP[pid];
+    if(map && Array.isArray(map.opsi) && map.opsi.length > 0){
+      map.opsi.forEach(ph => {
+        const opt = document.createElement('option');
+        opt.value = String(ph.id);
+        opt.textContent = `${ph.label} — Rp ${formatNum(ph.harga)}`;
+        if(ph.default) opt.selected = true;
+        mHargaSelect.appendChild(opt);
+      });
+    }
+
+    // Opsi: Manual
+    const optManual = document.createElement('option');
+    optManual.value = 'manual';
+    optManual.textContent = 'Harga Manual';
+    mHargaSelect.appendChild(optManual);
+
+    // Set default pilihan: jika ada ProdukHarga default → terpilih;
+    // kalau tidak, default ke 'utama'
+    if(!mHargaSelect.querySelector('option[selected]')){
+      mHargaSelect.value = 'utama';
+    }
+    onChangeHargaSelect();
+  }
+
+  function onChangeHargaSelect(){
+    const val = mHargaSelect.value; // 'utama' | 'manual' | <idHarga>
+    if(val === 'manual'){
+      mHargaId.value = ''; // tidak pakai id
+      mHargaManual.disabled = false;
+      mHargaManual.focus();
+    }else{
+      mHargaManual.disabled = true;
+      mHargaManual.value = '';
+      if(val === 'utama'){
+        mHargaId.value = '';
+      }else{
+        mHargaId.value = val; // id ProdukHarga
+      }
+    }
+    updateSubtotal();
+  }
+
+  function closeQtyModal(){
+    qtyBackdrop.classList.remove('show');
+    qtyBackdrop.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+  qtyBackdrop.addEventListener('click', (e)=>{ if(e.target === qtyBackdrop) closeQtyModal(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && qtyBackdrop.classList.contains('show')) closeQtyModal(); });
+
+  function incQty(){
+    let q = parseInt(mJumlah.value||'0',10);
+    q++; mJumlah.value = q; updateSubtotal();
+  }
+  function decQty(){
+    let q = parseInt(mJumlah.value||'0',10);
+    if(q > 0){ q--; mJumlah.value = q; updateSubtotal(); }
+  }
+  mJumlah.addEventListener('input', updateSubtotal);
+  mHargaManual.addEventListener('input', updateSubtotal);
+
+  function currentHarga(){
+    const sel = mHargaSelect.value;
+    if(sel === 'manual'){
+      return parseInt(mHargaManual.value||'0',10) || 0;
+    }
+    if(sel === 'utama'){
+      return hargaUtama || 0;
+    }
+    // preset id → cari harganya dari HARGA_MAP
+    const map = HARGA_MAP[currentPid];
+    if(map && Array.isArray(map.opsi)){
+      const found = map.opsi.find(x=> String(x.id) === sel);
+      if(found) return found.harga || 0;
+    }
+    return hargaUtama || 0;
+  }
+
+  function updateSubtotal(){
+    const q = parseInt(mJumlah.value||'0',10);
+    const h = currentHarga();
+    const sub = Math.max(0, q*h);
+    mSubtotal.textContent = 'Subtotal: Rp ' + formatNum(sub);
+    btnAdd.disabled = (q<=0);
+  }
+
+  function formatNum(num){
+    try{ return (num||0).toLocaleString('id-ID'); }catch(e){ return num; }
+  }
+
+  // ====== Tambah ke Keranjang (AJAX ringan) ======
+  async function handleAddToCart(e){
+    e.preventDefault();
+
+    const q = parseInt(mJumlah.value||'0',10);
+    if(q <= 0){ showToast('Jumlah harus > 0', true); return false; }
+
+    // Siapkan form data
+    const form = document.getElementById('modalForm');
+    const fd = new FormData(form);
+
+    // Kalau mode manual → kirim harga_id kosong (server akan pakai default).
+    // (Jika mau, bisa tambahkan field custom_harga untuk diproses server.)
+    if(mHargaSelect.value === 'manual'){
+      fd.set('harga_id', '');
+      // fd.set('custom_harga', String(parseInt(mHargaManual.value||'0',10) || 0)); // Aktifkan jika server diupdate.
+    }
+
+    try{
+      await fetch(form.action, { method:'POST', body: fd, redirect:'follow' });
+      showToast('Ditambahkan ke keranjang.', false);
+      bumpCartBadge(q);
+      closeQtyModal();
+    }catch(err){
+      // fallback submit normal
+      form.submit();
+    }
+    return false;
+  }
+
+  // Update badge keranjang (FAB + sidebar)
+  function bumpCartBadge(inc){
+    // FAB badge
+    try{
+      const curr = parseInt((fabBadge.textContent||'0').trim(), 10) || 0;
+      fabBadge.textContent = curr + inc;
+    }catch(e){}
+
+    // Sidebar badge (jika ada)
+    document.querySelectorAll('.side-link .badge').forEach(b=>{
+      const n = parseInt((b.textContent||'0').trim(),10) || 0;
+      b.textContent = n + inc;
+    });
+  }
+
+  // Toast helper
+  function showToast(msg, isError){
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast' + (isError? ' error':'');
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(()=>{ c.removeChild(el); }, 3000);
+  }
+</script>
+{% endblock %}

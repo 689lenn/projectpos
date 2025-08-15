@@ -1,0 +1,480 @@
+{% extends "base.html" %}
+{% block title %}Tambah Transaksi{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card-bg: #ffffff;
+    --card-br: 14px;
+    --border: #eaeaea;
+    --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+    --text: #222;
+    --text-muted: #6b7280;
+    --brand: #007bff;
+    --brand-hover: #0064cf;
+    --success: #28a745;
+    --danger: #dc3545;
+    --ring: rgba(0,123,255,.25);
+  }
+
+  .heading {
+    text-align:center;
+    margin: 0 0 14px;
+    font-size: 22px;
+    letter-spacing: .3px;
+  }
+  .subnote {
+    text-align:center;
+    margin-bottom: 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* GRID PRODUK */
+  .grid-product {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--card-br);
+    box-shadow: var(--shadow-sm);
+    padding: 12px;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .2s ease;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+    border-color: #dedede;
+  }
+  .product-row {
+    display:flex; align-items:center; gap:12px;
+  }
+  .thumb-wrap {
+    width:66px; height:66px;
+    background: #f6f7fb;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    flex: 0 0 66px;
+  }
+  .thumb-wrap img {
+    max-width: 66px; max-height: 66px; display:block;
+  }
+  .pname {
+    font-weight: 700; margin:0; font-size: 15px; color: var(--text);
+  }
+  .meta {
+    margin-top: 4px; display:flex; gap:10px; flex-wrap:wrap;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .chip {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#f2f3f5; border-radius: 999px; padding: 5px 10px; border: 1px solid #ebedf0;
+  }
+  .chip .dot {
+    width:6px; height:6px; border-radius:50%;
+  }
+  .chip.price .dot { background:#00b894; }
+  .chip.stock .dot { background:#0984e3; }
+
+  .btn-primary {
+    display:block; width:100%;
+    margin-top:12px;
+    border:none; border-radius: 10px;
+    padding:10px 12px;
+    background: var(--brand); color:#fff; cursor:pointer;
+    font-weight:600; letter-spacing:.2px;
+    transition: background .15s ease, transform .06s ease;
+  }
+  .btn-primary:hover { background: var(--brand-hover); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary:disabled { opacity:.6; cursor:not-allowed; }
+
+  /* WRAP DRAFT CARD */
+  .draft-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--card-br);
+    box-shadow: var(--shadow-sm);
+    padding: 12px;
+    margin-top: 22px;
+  }
+  .draft-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 8px;
+  }
+  .draft-header h3 {
+    margin:0; font-size: 16px; letter-spacing:.3px;
+  }
+  .hint {
+    font-size: 12px; color: var(--text-muted);
+  }
+
+  /* TABLE MODERN */
+  .table-wrap { overflow-x:auto; border-radius: 10px; }
+  .table-modern {
+    width:100%; border-collapse: collapse; background: #fff;
+    border-radius: 10px; overflow: hidden;
+  }
+  .table-modern thead th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    border-bottom: 1px solid #e9eef5;
+    padding: 12px;
+    text-align: left;
+  }
+  .table-modern tbody td {
+    padding: 12px;
+    border-bottom: 1px solid #f0f3f7;
+  }
+  .table-modern tfoot td, .table-modern tfoot th {
+    background: #f9fafb;
+    padding: 12px;
+    border-top:1px solid #edf2f7;
+  }
+  .text-right { text-align: right; }
+  .td-actions { text-align:center; }
+
+  .btn-danger {
+    border:none; border-radius: 8px; padding:8px 12px;
+    background: var(--danger); color:#fff; cursor:pointer;
+    transition: filter .12s ease, transform .06s ease;
+  }
+  .btn-danger:hover { filter: brightness(.95); }
+  .btn-danger:active { transform: translateY(1px); }
+
+  .action-bar {
+    margin-top: 12px;
+    display:flex; gap:12px; justify-content:center; flex-wrap: wrap;
+  }
+  .btn-save {
+    border:none; border-radius:10px; padding:10px 14px;
+    background: var(--success); color:#fff; cursor:pointer;
+    font-weight: 700;
+    transition: filter .12s ease, transform .06s ease;
+  }
+  .btn-save:hover { filter: brightness(.95); }
+  .btn-save:active { transform: translateY(1px); }
+  .btn-cancel {
+    display:inline-block; padding:10px 14px; border-radius:10px;
+    background:#adb5bd; color:#fff; text-decoration:none;
+    transition: filter .12s ease, transform .06s ease;
+  }
+  .btn-cancel:hover { filter: brightness(.95); }
+  .btn-cancel:active { transform: translateY(1px); }
+
+  /* MODAL */
+  #modalBackdrop {
+    display:none; position: fixed; inset:0; background: rgba(16,24,40,.35);
+    z-index: 999;
+    opacity: 0; transition: opacity .15s ease;
+  }
+  #modalBackdrop.show { display:block; opacity:1; }
+  #modal {
+    display:none; position: fixed; top:50%; left:50%; transform: translate(-50%, -50%);
+    width: min(420px, 94%); background: #fff;
+    border-radius: 14px; box-shadow: 0 30px 60px rgba(0,0,0,.22); z-index: 1000;
+    overflow:hidden;
+  }
+  #modal.show { display:block; }
+
+  .modal-head {
+    padding: 14px 16px;
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #eef1f5;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .modal-title { font-weight:800; letter-spacing:.3px; font-size: 16px; color:#111827; }
+  .modal-close {
+    border:none; background: transparent; font-size: 20px; cursor:pointer; color: #6b7280;
+  }
+  .modal-close:hover { color: #111; }
+
+  .modal-body { padding: 14px 16px; color: #1f2937; }
+  .label { font-size:12px; color: #6b7280; display:block; margin-bottom: 5px; }
+  .form-grid {
+    display:flex; gap: 12px; flex-wrap: wrap;
+  }
+  .form-grid .field {
+    flex: 1 1 140px;
+  }
+  .field input {
+    width:100%; padding: 10px 12px; border: 1px solid #e6e8f0; border-radius: 10px;
+    transition: box-shadow .12s ease, border-color .12s ease;
+    font-size: 14px;
+  }
+  .field input:focus {
+    outline:none; border-color: #cfe3ff; box-shadow: 0 0 0 4px var(--ring);
+  }
+  .stock-hint { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+
+  .modal-foot {
+    padding: 12px 16px; border-top: 1px solid #eef1f5; text-align: right;
+  }
+  .btn-add {
+    border:none; border-radius:10px; padding: 9px 12px;
+    background: var(--brand); color:#fff; cursor:pointer;
+    font-weight:700;
+  }
+  .btn-add:hover { background: var(--brand-hover); }
+
+  /* Aksesibilitas fokus pada tombol */
+  .btn-primary:focus, .btn-save:focus, .btn-danger:focus, .btn-add:focus, .btn-cancel:focus {
+    outline: 2px solid #cfe3ff;
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 600px){
+    .pname { font-size:14px; }
+    .meta { font-size:12px; }
+    .chip { padding: 4px 8px; }
+    .btn-primary, .btn-add, .btn-save, .btn-cancel { padding:9px 12px; font-size:13px; }
+    .table-modern thead th, .table-modern tbody td, .table-modern tfoot td { padding:10px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="heading">Tambah Transaksi</h1>
+<p class="subnote">Pilih produk di bawah ini, atur harga/qty di pop-up, lalu simpan ke daftar.</p>
+
+{% if error %}
+  <div style="color:#dc3545; text-align:center; margin-bottom:10px; font-weight:600;">{{ error }}</div>
+{% endif %}
+
+<!-- Grid Produk -->
+<div class="grid-product">
+  {% for p in daftar_produk %}
+  <div class="card">
+    <div class="product-row">
+      <div class="thumb-wrap">
+        {% if p.foto %}
+          <img src="{{ url_for('static', filename='uploads/' ~ p.foto) }}" alt="foto {{ p.nama }}">
+        {% else %}
+          <img src="{{ url_for('static', filename='uploads/placeholder.png') }}" alt="no image">
+        {% endif %}
+      </div>
+      <div>
+        <p class="pname">{{ p.nama }}</p>
+        <div class="meta">
+          <span class="chip price"><span class="dot"></span> Harga: <strong>Rp {{ "{:,}".format(p.harga) }}</strong></span>
+          <span class="chip stock"><span class="dot"></span> Stok: <strong>{{ p.stok }}</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary"
+            onclick="openModal({{ p.id }}, '{{ p.nama|e }}', {{ p.harga }}, {{ p.stok }})">
+      Pilih
+    </button>
+  </div>
+  {% else %}
+  <p style="grid-column:1/-1; text-align:center; color:var(--text-muted);">
+    Tidak ada produk. Silakan tambah produk terlebih dahulu.
+  </p>
+  {% endfor %}
+</div>
+
+<!-- Draft Item -->
+<div class="draft-card">
+  <div class="draft-header">
+    <h3>Item yang Dipilih</h3>
+    <div class="hint">Pastikan data sudah benar sebelum disimpan.</div>
+  </div>
+  <form id="trxForm" method="POST" action="{{ url_for('transaksi_tambah') }}">
+    <div class="table-wrap">
+      <table class="table-modern">
+        <thead>
+          <tr>
+            <th>Produk</th>
+            <th style="width:140px;">Harga (Rp)</th>
+            <th style="width:100px;">Qty</th>
+            <th style="width:160px;" class="text-right">Subtotal</th>
+            <th style="width:90px;" class="td-actions">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="draftBody">
+          <tr id="emptyRow">
+            <td colspan="5" style="text-align:center; padding:12px; color:#6b7280;">
+              Belum ada item dipilih
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="3" class="text-right">Total</th>
+            <th id="totalCell">Rp 0</th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div id="hiddenInputs"></div>
+
+    <div class="action-bar">
+      <button type="button" class="btn-save" onclick="submitDraft()">✅ Simpan Transaksi</button>
+      <a href="{{ url_for('transaksi_list') }}" class="btn-cancel">❌ Batal</a>
+    </div>
+  </form>
+</div>
+
+<!-- Modal -->
+<div id="modalBackdrop"></div>
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="titleModal">
+  <div class="modal-head">
+    <div class="modal-title" id="titleModal">Tambah Item</div>
+    <button class="modal-close" onclick="closeModal()" aria-label="Tutup pop-up">×</button>
+  </div>
+  <div class="modal-body">
+    <div class="field">
+      <label class="label">Produk</label>
+      <div id="mNama" style="font-weight:700;"></div>
+    </div>
+    <div class="form-grid" style="margin-top:8px;">
+      <div class="field">
+        <label class="label" for="mHarga">Harga (Rp)</label>
+        <input id="mHarga" type="number" min="0" value="0" />
+      </div>
+      <div class="field" style="max-width:140px;">
+        <label class="label" for="mQty">Qty</label>
+        <input id="mQty" type="number" min="1" value="1" />
+      </div>
+    </div>
+    <div class="stock-hint">Stok tersedia: <span id="mStok">0</span></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn-add" onclick="addToDraft()">Tambah ke Daftar</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block content %}
+<script>
+  let currentProduct = { id: null, nama: '', harga: 0, stok: 0 };
+  const draft = []; // {id, nama, harga, qty}
+
+  function openModal(id, nama, harga, stok) {
+    currentProduct = { id, nama, harga, stok };
+    document.getElementById('mNama').textContent = nama;
+    document.getElementById('mHarga').value = harga;
+    document.getElementById('mQty').value = 1;
+    document.getElementById('mQty').setAttribute('max', stok);
+    document.getElementById('mStok').textContent = stok;
+
+    const backdrop = document.getElementById('modalBackdrop');
+    const modal    = document.getElementById('modal');
+    backdrop.classList.add('show');
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    document.getElementById('mQty').focus();
+  }
+
+  function closeModal() {
+    const backdrop = document.getElementById('modalBackdrop');
+    const modal    = document.getElementById('modal');
+    backdrop.classList.remove('show');
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+    // klik area backdrop menutup modal
+    closeModal();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+      const backdrop = document.getElementById('modalBackdrop');
+      if (backdrop.classList.contains('show')) closeModal();
+    }
+  });
+
+  function addToDraft() {
+    const harga = parseInt(document.getElementById('mHarga').value || '0', 10);
+    const qty   = parseInt(document.getElementById('mQty').value || '0', 10);
+    const max   = parseInt(document.getElementById('mQty').getAttribute('max') || '0', 10);
+
+    if (qty <= 0)  { alert('Qty harus lebih dari 0'); return; }
+    if (qty > max) { alert('Qty melebihi stok'); return; }
+    if (harga < 0) { alert('Harga tidak boleh negatif'); return; }
+
+    const idx = draft.findIndex(x => x.id === currentProduct.id);
+    if (idx >= 0) {
+      draft[idx].qty += qty;
+      draft[idx].harga = harga;
+    } else {
+      draft.push({ id: currentProduct.id, nama: currentProduct.nama, harga, qty });
+    }
+
+    renderDraft();
+    closeModal();
+  }
+
+  function formatRupiah(n) {
+    try { return 'Rp ' + (n||0).toLocaleString('id-ID'); } catch(e){ return 'Rp ' + n; }
+  }
+
+  function renderDraft() {
+    const body = document.getElementById('draftBody');
+    body.innerHTML = '';
+    let total = 0;
+
+    if (draft.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5" style="text-align:center; padding:12px; color:#6b7280;">Belum ada item dipilih</td>`;
+      body.appendChild(tr);
+    } else {
+      draft.forEach((it, i) => {
+        const sub = it.harga * it.qty; total += sub;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${it.nama}</td>
+          <td>${formatRupiah(it.harga)}</td>
+          <td>${it.qty}</td>
+          <td class="text-right">${formatRupiah(sub)}</td>
+          <td class="td-actions">
+            <button type="button" class="btn-danger" onclick="removeDraft(${i})">Hapus</button>
+          </td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+    document.getElementById('totalCell').textContent = formatRupiah(total);
+  }
+
+  function removeDraft(i) {
+    draft.splice(i, 1);
+    renderDraft();
+  }
+
+  function submitDraft() {
+    if (draft.length === 0) { alert('Belum ada item yang dipilih.'); return; }
+
+    const hid = document.getElementById('hiddenInputs');
+    hid.innerHTML = '';
+
+    draft.forEach(it => {
+      const ip1 = document.createElement('input');
+      ip1.type = 'hidden'; ip1.name = 'produk_id[]'; ip1.value = it.id;
+      const ip2 = document.createElement('input');
+      ip2.type = 'hidden'; ip2.name = 'jumlah[]'; ip2.value = it.qty;
+      const ip3 = document.createElement('input');
+      ip3.type = 'hidden'; ip3.name = 'harga[]';  ip3.value = it.harga;
+      hid.appendChild(ip1); hid.appendChild(ip2); hid.appendChild(ip3);
+    });
+
+    const form = document.getElementById('trxForm');
+    form.action = "{{ url_for('keranjang_set') }}";
+    form.method = "POST";
+    form.submit();
+  }
+</script>
+{% endblock %}

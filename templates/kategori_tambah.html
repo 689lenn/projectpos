@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Tambah Kategori{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card-bg:#fff;
+    --border:#e6e8f0;
+    --text:#111827;
+    --muted:#6b7280;
+    --brand:#007bff;
+    --brand-hover:#0064cf;
+    --ring: rgba(0,123,255,.25);
+    --radius: 12px;
+    --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+  }
+
+  .page-title{
+    margin: 0 0 6px;
+    text-align:center;
+    letter-spacing:.2px;
+  }
+  .subnote{
+    text-align:center;
+    margin-bottom: 14px;
+    color:var(--muted);
+    font-size: 13px;
+  }
+
+  .form-card{
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 16px;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .form-group{ margin-bottom: 12px; }
+  .label{ display:block; font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600; }
+  .control{
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:10px; font-size:14px; outline:none; background:#fff;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+  .help{ font-size:12px; color:#6b7280; margin-top:6px; }
+
+  .actions{
+    display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top: 12px;
+  }
+  .btn{
+    border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; color:#fff;
+  }
+  .btn-primary{ background: var(--brand); }
+  .btn-primary:hover{ background: var(--brand-hover); }
+  .btn-muted{ background:#6c757d; text-decoration:none; display:inline-flex; align-items:center; }
+  .btn-muted:hover{ filter:brightness(.95); }
+
+  /* Aksesibilitas tombol */
+  .btn:focus{ outline: 2px solid #a6c8ff; outline-offset: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Tambah Kategori</h1>
+<p class="subnote">Masukkan nama kategori. Nama harus unik.</p>
+
+<div class="form-card">
+  <form action="{{ url_for('kategori_tambah') }}" method="POST" novalidate>
+    <div class="form-group">
+      <label for="nama" class="label">Nama Kategori</label>
+      <input id="nama" name="nama" type="text" class="control" placeholder="Misal: Bantal, Kasur, Aksesoris" required autofocus>
+      <div class="help">Contoh: "Bantal", "Selimut", "Kasur". Hindari duplikasi nama.</div>
+    </div>
+
+    <div class="actions">
+      <a href="{{ url_for('kategori_list') }}" class="btn btn-muted">← Kembali</a>
+      <button type="submit" class="btn btn-primary">💾 Simpan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

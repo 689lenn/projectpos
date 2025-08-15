@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Keranjang{% endblock %}
+
+{% block head %}
+<style>
+  .cart { background:#fff; padding:1rem; border-radius:8px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { border:1px solid #ddd; padding:8px; text-align:left; }
+  th { background:#f3f3f3; }
+  .right { text-align:right; }
+  .actions { display:flex; gap:8px; }
+  .topbar { margin-bottom:10px; display:flex; gap:10px; }
+  input[type="number"] { width:72px; }
+  .footer-actions{
+    margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;
+  }
+
+  /* Modal ringkas untuk Potensi Keuntungan */
+  .modal-backdrop{position:fixed; inset:0; background:rgba(16,24,40,.4); display:none; align-items:center; justify-content:center; z-index:2000;}
+  .modal-backdrop.show{display:flex;}
+  .modal{
+    width:min(420px, 92vw); background:#fff; border-radius:12px; box-shadow:0 30px 60px rgba(0,0,0,.2);
+    overflow:hidden;
+  }
+  .modal-head{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #eef1f5;}
+  .modal-body{padding:14px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Keranjang</h1>
+
+<div class="topbar">
+  <a class="btn btn-primary" href="{{ url_for('index') }}">← Pilih Produk Lagi</a>
+</div>
+
+<div class="cart">
+  {% if keranjang %}
+
+  <!-- FORM UPDATE QTY -->
+  <form id="updateForm" action="{{ url_for('keranjang_update') }}" method="post">
+    <table>
+      <thead>
+        <tr>
+          <th>Produk</th>
+          <th>Harga</th>
+          <th>Jumlah</th>
+          <th class="right">Subtotal</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, item in keranjang.items() %}
+          {% set subtotal = item.harga * item.jumlah %}
+          <tr>
+            <td>
+              <div><strong>{{ item.nama }}</strong></div>
+              {% if item.stok is defined %}
+                <div style="font-size:12px;color:#666;">Stok: {{ item.stok }}</div>
+              {% endif %}
+            </td>
+            <td>Rp {{ "{:,}".format(item.harga) }}</td>
+            <td>
+              <input type="hidden" name="key[]" value="{{ key }}">
+              <input type="number" name="qty[]" min="0" value="{{ item.jumlah }}">
+            </td>
+            <td class="right">Rp {{ "{:,}".format(subtotal) }}</td>
+            <td class="actions">
+              <!-- Tombol hapus: pakai form terpisah via atribut form -->
+              <button type="submit"
+                      class="btn btn-danger"
+                      form="del-{{ key }}"
+                      onclick="return confirm('Hapus item ini?')">
+                🗑 Hapus
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3" class="right">Total</th>
+          <th class="right">Rp {{ "{:,}".format(total) }}</th>
+          <th></th>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="footer-actions">
+      <button type="submit" class="btn btn-primary">💾 Update Jumlah</button>
+
+      <!-- Tombol lihat potensi keuntungan -->
+      <button type="button" class="btn btn-success" onclick="openProfit()">💡 Potensi Keuntungan</button>
+
+      <!-- Checkout (GET ke /pembayaran), di luar updateForm -->
+      <a href="{{ url_for('pembayaran') }}" class="btn btn-success" onclick="return confirm('Lanjut ke pembayaran?')">✅ Checkout</a>
+    </div>
+  </form>
+
+  <!-- FORM-FORM HAPUS TERPISAH (tidak nested) -->
+  {% for key, item in keranjang.items() %}
+    <form id="del-{{ key }}" action="{{ url_for('hapus_item_keranjang', pid=key) }}" method="post"></form>
+  {% endfor %}
+
+  {% else %}
+    <p>Keranjang masih kosong. Silakan pilih produk di halaman produk.</p>
+  {% endif %}
+
+  {% if error %}
+    <p style="color:#dc3545; margin-top:10px;">{{ error }}</p>
+  {% endif %}
+</div>
+
+<!-- Modal Potensi Keuntungan -->
+<div id="profitBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div style="font-weight:800;">Potensi Keuntungan</div>
+      <button class="btn btn-muted" onclick="closeProfit()">Tutup</button>
+    </div>
+    <div class="modal-body" id="profitBody">
+      <!-- konten diisi dari JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+  // ====== Potensi Keuntungan (contoh sederhana: margin 20%)
+  function fmt(n){ try{ return 'Rp ' + (n||0).toLocaleString('id-ID'); }catch(e){ return 'Rp ' + n; } }
+  function openProfit(){
+    const rows = [...document.querySelectorAll('tbody tr')];
+    let totalProfit = 0;
+    let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+
+    rows.forEach(tr => {
+      const nama = tr.querySelector('td strong')?.textContent || '';
+      const harga = parseInt((tr.children[1]?.textContent || '0').replace(/[^\d]/g,''),10) || 0;
+      const qty = parseInt(tr.querySelector('input[name="qty[]"]')?.value || '0',10) || 0;
+      // contoh kalkulasi: margin 20%
+      const profit = Math.round(harga * 0.20) * qty;
+      totalProfit += profit;
+      if(nama && qty>0){
+        html += `<div style="display:flex; justify-content:space-between;"><span>${nama} × ${qty}</span><strong>${fmt(profit)}</strong></div>`;
+      }
+    });
+
+    html += `<hr style="border:none; border-top:1px solid #eee;">`;
+    html += `<div style="display:flex; justify-content:space-between;"><span>Total Potensi</span><strong>${fmt(totalProfit)}</strong></div>`;
+    html += '</div>';
+
+    document.getElementById('profitBody').innerHTML = html;
+    document.getElementById('profitBackdrop').classList.add('show');
+    document.getElementById('profitBackdrop').setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeProfit(){
+    document.getElementById('profitBackdrop').classList.remove('show');
+    document.getElementById('profitBackdrop').setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+</script>
+{% endblock %}

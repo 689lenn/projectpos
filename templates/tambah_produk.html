@@ -1,0 +1,207 @@
+{% extends "base.html" %} {% block title %}Tambah Produk{% endblock %}
+
+{% block head %}
+
+<style>
+  :root{
+    --card-bg:#fff; --border:#e6e8f0; --text:#111827; --muted:#6b7280;
+    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
+    --radius: 12px; --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+  }
+
+  .page-title{ margin:0 0 6px; text-align:center; letter-spacing:.2px; }
+  .subnote{ text-align:center; margin-bottom:14px; color:var(--muted); font-size:13px; }
+
+  .form-card{
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .grid{ display:grid; grid-template-columns:1.4fr .9fr; gap:16px; }
+  @media (max-width: 860px){ .grid{ grid-template-columns:1fr; } }
+
+  .form-group{ margin-bottom: 12px; }
+  .label{ display:block; font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600; }
+  .control{
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:10px; font-size:14px; outline:none; background:#fff;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+  .help{ font-size:12px; color:#6b7280; margin-top:6px; }
+
+  /* Media / Upload */
+  .media{
+    background:#fafbff; border:1px dashed #dfe3ea; border-radius: 12px; padding: 12px;
+  }
+  .media .drop{ font-size:12px; color:#6b7280; margin-bottom: 8px; }
+  .preview-wrap{ display:none; margin-top: 8px; }
+  .preview{ width:100%; max-height: 280px; object-fit: contain; border:1px solid var(--border); border-radius:10px; background:#fff; }
+
+  /* Tabel harga */
+  table.harga-table{
+    width:100%; border-collapse: collapse; margin-top:8px; background:#fff; border:1px solid var(--border);
+    border-radius: 10px; overflow:hidden;
+  }
+  .harga-table th, .harga-table td{
+    padding:10px; border-bottom:1px solid #eef1f5; vertical-align: middle; text-align:left;
+  }
+  .harga-table thead th{ background:#f8fafc; color:#334155; font-weight:700; }
+  .harga-table tbody tr:last-child td{ border-bottom:none; }
+  .harga-table .btn-mini{
+    padding:7px 10px; border:none; border-radius:8px; background:#ef4444; color:#fff; cursor:pointer; font-weight:700;
+  }
+  .harga-add{
+    margin-top:10px; padding:9px 12px; border:none; border-radius:10px; background:#10b981; color:#fff; cursor:pointer; font-weight:700;
+  }
+  .harga-add:hover{ filter: brightness(.95); }
+
+  /* Actions */
+  .actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top: 12px; }
+  .btn{ border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; }
+  .btn-primary{ background: var(--brand); }
+  .btn-primary:hover{ background: var(--brand-hover); }
+  .btn-muted{ background:#6c757d; }
+  .btn-muted:hover{ filter: brightness(.95); }
+
+  /* Aksesibilitas */
+  .btn:focus, .harga-add:focus, .btn-mini:focus{ outline: 2px solid #a6c8ff; outline-offset: 2px; }
+</style>{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Tambah Produk</h1>
+<p class="subnote">Masukkan informasi produk, kategori, upload foto (opsional), dan set beberapa opsi harga jika diperlukan.</p><div class="form-card">
+  <form action="{{ url_for('produk_tambah') }}" method="POST" enctype="multipart/form-data" novalidate>
+    <div class="grid">
+      <!-- Kolom kiri -->
+      <div>
+        <div class="form-group">
+          <label for="nama" class="label">Nama Produk</label>
+          <input id="nama" type="text" name="nama" class="control" placeholder="Misal: Bantal Premium" required>
+        </div><div class="form-group">
+      <label for="harga" class="label">Harga Utama (Rp)</label>
+      <input id="harga" type="number" name="harga" min="0" class="control" placeholder="Misal: 150000" required>
+      <div class="help">Harga utama (legacy). Jika tidak memilih default harga lain, sistem akan menggunakan harga ini.</div>
+    </div>
+
+    <div class="form-group">
+  <label for="hpp" class="label">HPP (Modal / biaya pokok per unit)</label>
+  <input id="hpp" type="number" name="hpp" min="0" class="control" value="0" required>
+  <div class="help">Digunakan untuk menghitung potensi keuntungan di keranjang.</div>
+</div>
+
+    <div class="form-group">
+      <label for="stok" class="label">Stok</label>
+      <input id="stok" type="number" name="stok" min="0" class="control" placeholder="Misal: 25" required>
+    </div>
+
+    <div class="form-group">
+      <label for="kategori_id" class="label">Kategori</label>
+      <select id="kategori_id" name="kategori_id" class="control">
+        <option value="">(Tanpa kategori)</option>
+        {% for k in kategori %}
+          <option value="{{ k.id }}">{{ k.nama }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- ====== Multi Harga (opsional) ====== -->
+    <div class="form-group">
+      <label class="label">Harga Lain (opsional)</label>
+      <div class="help">Tambah beberapa harga (contoh: Retail, Grosir, Promo). Pilih salah satu sebagai <strong>default</strong> jika ingin override harga utama saat transaksi.</div>
+
+      <table class="harga-table" id="tblHarga" aria-describedby="hargaHelp">
+        <thead>
+          <tr>
+            <th style="width:40%;">Label</th>
+            <th style="width:35%;">Harga (Rp)</th>
+            <th style="width:15%;">Default?</th>
+            <th style="width:10%;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyHarga">
+          <!-- Baris dinamis -->
+        </tbody>
+      </table>
+
+      <div class="help" id="hargaHelp" style="margin-top:6px;">
+        Jika memilih <em>Gunakan harga utama</em>, maka default tetap memakai kolom "Harga Utama" di atas.
+      </div>
+
+      <div style="margin-top:8px;">
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="radio" name="harga_default" value="utama" checked>
+          <span>Gunakan harga utama sebagai default</span>
+        </label>
+      </div>
+
+      <button type="button" class="harga-add" onclick="tambahBarisHarga()">+ Tambah Harga</button>
+    </div>
+  </div>
+
+  <!-- Kolom kanan: upload -->
+  <div>
+    <div class="media">
+      <div class="drop">Unggah foto produk (opsional)</div>
+      <input id="foto" type="file" name="foto" accept="image/*" class="control" style="padding:8px;">
+      <div class="preview-wrap" id="previewWrap">
+        <img id="previewImg" class="preview" alt="Preview foto" />
+      </div>
+      <div class="help">Format: JPG/PNG/WebP. Ukuran ideal ≤ 1MB.</div>
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <a href="{{ url_for('produk_list') }}" class="btn btn-muted">← Kembali</a>
+  <button type="submit" class="btn btn-primary">💾 Simpan</button>
+</div>
+
+  </form>
+</div><script>
+  // Tambah baris harga dinamis
+  function tambahBarisHarga(){
+    const tbody = document.getElementById('tbodyHarga');
+    const i = tbody.querySelectorAll('tr').length;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <input type="text" name="harga_label[]" placeholder="Misal: Retail / Grosir / Promo" class="control" />
+      </td>
+      <td>
+        <input type="number" name="harga_value[]" min="0" value="0" class="control" />
+      </td>
+      <td style="text-align:center;">
+        <input type="radio" name="harga_default" value="row-${i}" aria-label="Jadikan baris ini sebagai default">
+      </td>
+      <td>
+        <button type="button" class="btn-mini" onclick="hapusBaris(this)">Hapus</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function hapusBaris(btn){
+    const tr = btn.closest('tr');
+    if(tr){ tr.remove(); }
+  }
+
+  // Preview foto
+  const fotoInput = document.getElementById('foto');
+  const previewWrap = document.getElementById('previewWrap');
+  const previewImg  = document.getElementById('previewImg');
+  fotoInput.addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    if(!file){ previewWrap.style.display='none'; previewImg.src=''; return; }
+    const reader = new FileReader();
+    reader.onload = (e) => { previewImg.src = e.target.result; previewWrap.style.display = 'block'; };
+    reader.readAsDataURL(file);
+  });
+</script>{% endblock %}

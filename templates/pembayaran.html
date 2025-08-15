@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Pembayaran{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card:#fff; --border:#e6e8f0; --muted:#6b7280; --text:#111827;
+    --ring: rgba(0,123,255,.25);
+    --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px; box-shadow: var(--shadow);
+  }
+  .title { margin:0 0 8px; text-align:center; }
+  .sub { text-align:center; color:var(--muted); margin-bottom:12px; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:720px){ .grid{ grid-template-columns:1fr; } }
+
+  .group{ margin-bottom:12px; }
+  label{ display:block; font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600; }
+  .control{
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:10px; font-size:14px; outline:none; background:#fff;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+
+  .summary{
+    background:#fafbff; border:1px solid #e9ecf4; border-radius:12px;
+    padding:12px;
+  }
+  .row { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .row strong { font-size: 16px; }
+
+  .actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top: 12px; }
+
+  .help { font-size:12px; color:var(--muted); margin-top:6px; }
+  .warn { color:#dc3545; margin-top: 6px; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h1 class="title">Pembayaran</h1>
+  <p class="sub">Pilih pelanggan dan masukkan nominal pembayaran untuk menyelesaikan transaksi.</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+        <div class="warn" role="alert">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card">
+    <form method="POST" action="{{ url_for('pembayaran') }}">
+      <div class="grid">
+        <div>
+          <div class="group">
+            <label for="customer_id">Pelanggan</label>
+            <select id="customer_id" name="customer_id" class="control">
+              <option value="">(Tanpa pelanggan)</option>
+              {% for c in customers %}
+                <option value="{{ c.id }}">{{ c.nama }} — {{ c.email }}</option>
+              {% endfor %}
+            </select>
+            <div class="help">Kosongkan jika transaksi tanpa pelanggan.</div>
+          </div>
+
+          <div class="group">
+            <label for="bayar">Nominal Bayar (Rp)</label>
+            <input id="bayar" name="bayar" type="number" min="0" class="control" placeholder="Contoh: {{ total }}">
+            <div class="help">Masukkan uang yang diterima dari pelanggan.</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="summary">
+            <div class="row"><span>Total</span><strong id="sumTotal">Rp {{ "{:,}".format(total) }}</strong></div>
+            <div class="row"><span>Bayar</span><strong id="sumBayar">Rp 0</strong></div>
+            <div class="row"><span>Kembalian</span><strong id="sumKembali">Rp 0</strong></div>
+          </div>
+          <div class="help">Kembalian otomatis dihitung ketika nominal bayar diisi.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btn btn-muted" href="{{ url_for('keranjang_view') }}">← Kembali ke Keranjang</a>
+        <button class="btn btn-success" type="submit">💾 Simpan & Selesaikan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const elBayar = document.getElementById('bayar');
+  const sumTotal = {{ total|int }};
+  const elSBayar = document.getElementById('sumBayar');
+  const elSKembali = document.getElementById('sumKembali');
+
+  function fmt(n){ try{ return 'Rp ' + (n||0).toLocaleString('id-ID'); }catch(e){ return 'Rp ' + n; } }
+  function updateSummary(){
+    const b = parseInt(elBayar.value||'0', 10) || 0;
+    elSBayar.textContent = fmt(b);
+    elSKembali.textContent = fmt(b - sumTotal);
+  }
+  elBayar.addEventListener('input', updateSummary);
+  updateSummary();
+</script>
+{% endblock %}

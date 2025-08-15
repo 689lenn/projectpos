@@ -1,0 +1,156 @@
+<!-- Halaman ditampilkan setelah klik tombol CO -->
+{% extends "base.html" %}
+{% block title %}Laporan Transaksi{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card-bg:#fff;
+    --border:#eaeaea;
+    --radius: 12px;
+    --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --muted:#6b7280;
+    --brand:#007bff;
+    --brand-hover:#0064cf;
+    --success:#28a745;
+  }
+
+  .header-wrap {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; flex-wrap:wrap;
+    margin-bottom: 12px;
+  }
+  .title {
+    margin:0; font-size:22px; letter-spacing:.3px;
+  }
+  .subnote {
+    color: var(--muted); font-size: 13px;
+  }
+
+  .actions {
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .btn {
+    display:inline-block; padding:9px 12px; border-radius: 10px;
+    text-decoration:none; color:#fff; background: var(--brand);
+    font-weight:600; letter-spacing:.2px;
+    transition: background .15s ease, transform .06s ease;
+  }
+  .btn:hover { background: var(--brand-hover); }
+  .btn:active { transform: translateY(1px); }
+  .btn.secondary { background: #6c757d; }
+  .btn.success { background: var(--success); }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 16px rgba(0,0,0,.05);
+    padding: 12px;
+  }
+
+  .table-wrap { overflow-x:auto; border-radius: 10px; }
+  table {
+    width: 100%; border-collapse: collapse; background: #fff;
+    border-radius: 10px; overflow: hidden;
+  }
+  thead th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight:700;
+    border-bottom: 1px solid #e9eef5;
+    padding: 12px; text-align:left;
+  }
+  tbody td {
+    border-bottom:1px solid #f0f3f7;
+    padding: 12px;
+  }
+  tfoot td, tfoot th {
+    background: #f9fafb;
+    padding: 12px;
+    border-top:1px solid #edf2f7;
+  }
+
+  .cell-actions a {
+    display:inline-block; padding:7px 10px; border-radius:8px;
+    background: #0ea5e9; color:#fff; text-decoration:none;
+    font-size: 13px;
+    transition: filter .12s ease, transform .06s ease;
+  }
+  .cell-actions a:hover { filter: brightness(.95); }
+  .cell-actions a:active { transform: translateY(1px); }
+
+  .muted { color: var(--muted); font-size: 13px; }
+  .text-right { text-align:right; }
+
+  /* Empty state */
+  .empty {
+    text-align:center; color: var(--muted);
+    padding: 16px;
+  }
+
+  /* Responsive tweak */
+  @media (max-width: 640px){
+    .title { font-size: 18px; }
+    .btn { padding:8px 10px; font-size: 13px; }
+    thead th, tbody td { padding: 10px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header-wrap">
+  <div>
+    <h1 class="title">Laporan Transaksi</h1>
+    <div class="subnote">Riwayat transaksi yang sudah diselesaikan.</div>
+  </div>
+  <div class="actions">
+    <a class="btn secondary" href="{{ url_for('keranjang_view') }}">🧺 Keranjang</a>
+    <a class="btn" href="{{ url_for('index') }}">🛒 Pilih Produk</a>
+    {# Opsi tambahan: jika ingin tetap pakai draft transaksi #}
+    {# <a class="btn success" href="{{ url_for('transaksi_tambah') }}">+ Draft Transaksi</a> #}
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:140px;">Tanggal</th>
+          <th>Total</th>
+          <th style="width:100px;">Item</th>
+          <th style="width:120px;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for trx in daftar_transaksi %}
+        <tr>
+          <td>{{ trx.tanggal|format_tanggal }}</td>
+          <td>Rp {{ "{:,}".format(trx.total) }}</td>
+          <td>{{ trx.item_transaksi|length }}</td>
+          <td class="cell-actions">
+            <a href="{{ url_for('transaksi_detail', id=trx.id) }}">Detail</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty">
+            Belum ada transaksi.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if daftar_transaksi %}
+      <tfoot>
+        <tr>
+          <th colspan="4" class="muted">
+            Total transaksi: {{ daftar_transaksi|length }}
+          </th>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}

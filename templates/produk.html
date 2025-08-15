@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Daftar Produk{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card-bg:#fff;
+    --border:#e6e8f0;
+    --text:#111827;
+    --muted:#6b7280;
+    --brand: #007bff;
+    --brand-hover:#0064cf;
+    --danger:#dc3545;
+    --radius: 12px;
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+  }
+
+  .page-title{ margin:0 0 6px; text-align:center; }
+  .subnote { text-align:center; color:var(--muted); margin-bottom:12px; font-size:13px; }
+
+  .toolbar {
+    display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-bottom:10px;
+  }
+  .btn {
+    display:inline-block; padding:9px 12px; border-radius:10px; color:#fff; text-decoration:none; font-weight:700;
+    border:none; cursor:pointer;
+  }
+  .btn-primary{ background:var(--brand); }
+  .btn-primary:hover{ background:var(--brand-hover); }
+  .btn-danger{ background:var(--danger); }
+
+  .card {
+    background: var(--card-bg);
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 12px;
+  }
+
+  .table-wrap { overflow-x:auto; border-radius: 10px; }
+  table {
+    width:100%; border-collapse: collapse; background:#fff; border-radius: 10px; overflow:hidden;
+  }
+  thead th {
+    background:#f8fafc; color:#334155; font-weight:700; padding:12px; border-bottom: 1px solid #e9eef5; text-align:left;
+  }
+  tbody td {
+    padding:12px; border-bottom:1px solid #f0f3f7; vertical-align:middle;
+  }
+  tfoot td { padding:12px; background:#f9fafb; }
+
+  .thumb {
+    width:56px; height:56px; object-fit:cover; border-radius:10px; border:1px solid #e6e6e6; background:#f6f7fb;
+  }
+  .actions { display:flex; gap:8px; align-items:center; }
+  .link-edit {
+    background: var(--brand); color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:700;
+  }
+  .link-edit:hover { background: var(--brand-hover); }
+  .btn-delete {
+    background: var(--danger); color:#fff; padding:8px 12px; border-radius:8px; border:none; font-weight:700; cursor:pointer;
+  }
+
+  .empty { text-align:center; color:var(--muted); padding:16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Daftar Produk</h1>
+<p class="subnote">Kelola data produk Anda di sini.</p>
+
+<div class="toolbar">
+  <a href="{{ url_for('produk_tambah') }}" class="btn btn-primary">+ Tambah Produk</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Foto</th>
+          <th>Nama</th>
+          <th>Harga</th>
+          <th>Stok</th>
+          <th style="width:180px;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in daftar_produk %}
+        <tr>
+          <td>
+            {% if p.foto %}
+              <img class="thumb" src="{{ url_for('static', filename='uploads/' ~ p.foto) }}" alt="foto {{ p.nama }}">
+            {% else %}
+              <img class="thumb" src="{{ url_for('static', filename='uploads/placeholder.png') }}" alt="no image">
+            {% endif %}
+          </td>
+          <td><strong>{{ p.nama }}</strong></td>
+          <td>Rp {{ "{:,}".format(p.harga) }}</td>
+          <td>{{ p.stok }}</td>
+          <td>
+            <div class="actions">
+              <a class="link-edit" href="{{ url_for('produk_edit', id=p.id) }}">Edit</a>
+              <form action="{{ url_for('produk_hapus', id=p.id) }}" method="post" onsubmit="return confirm('Yakin hapus produk ini?');">
+                <button type="submit" class="btn-delete">Hapus</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="empty">Belum ada produk.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

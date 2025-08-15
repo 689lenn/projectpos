@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}POS App{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      /* Warna & tema */
+      --brand: #007bff;
+      --brand-hover: #0064cf;
+      --bg:    #f6f7fb;
+      --card:  #ffffff;
+      --txt:   #222;
+      --muted: #6b7280;
+      --muted2:#3e444a;
+      --border:#e5e7eb;
+      --radius: 12px;
+      --shadow: 0 10px 25px rgba(0,0,0,.08);
+
+      /* Sidebar */
+      --sidew: 240px;
+
+      /* Header */
+      --header-bg: #ffffff;
+      --header-border: #e6e8f0;
+      --header-shadow: 0 8px 18px rgba(0,0,0,.06);
+      --header-h: 64px;
+      --z-header: 1000;
+
+      /* Layering */
+      --z-sidebar: 900;
+      --z-backdrop: 850;
+
+      /* Button & badge */
+      --btn-radius: 10px;
+      --badge-bg: #ef4444;
+      --badge-txt:#fff;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; font-family: Arial, sans-serif; background:var(--bg); color:var(--txt); }
+
+    /* ===== Header (blok putih atas) ===== */
+    .app-header{
+      position: fixed; top: 0; left: 0; right: 0;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--header-border);
+      z-index: var(--z-header);
+      box-shadow: var(--header-shadow);
+    }
+    .app-header .header-inner{
+      height: var(--header-h);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 0 12px;
+    }
+    .header-left, .header-right { display:flex; align-items:center; gap:10px; }
+    .app-title { font-weight:800; letter-spacing:.3px; }
+
+    .header-spacer{ height: var(--header-h); } /* cegah konten ketutupan header */
+
+    /* Hamburger */
+    .menu-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width: 42px; height: 42px; border-radius: 10px; border:none;
+      background: var(--brand); color:#fff; cursor:pointer;
+      transition: transform .08s ease, filter .12s ease;
+    }
+    .menu-btn:hover{ filter: brightness(.96); transform: translateY(-1px); }
+    .menu-btn:active{ transform: translateY(0); }
+    .menu-btn svg{ width: 22px; height: 22px; }
+    /* Saat sidebar terbuka, sembunyikan hamburger */
+    body.sidebar-open .menu-btn{ display:none; }
+
+    /* ===== Layout utama ===== */
+    .container { display:flex; min-height: calc(100vh - var(--header-h)); }
+    .main {
+      flex:1; margin-left:0; padding:16px;
+      transition: margin-left .3s ease;
+    }
+    .main > *:first-child { margin-top: 0; }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      inset: var(--header-h) auto 0 0; /* mulai di bawah header */
+      width: var(--sidew);
+      background:#343a40; color:#fff;
+      transform: translateX(-100%);
+      transition: transform .28s ease;
+      z-index: var(--z-sidebar);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      overflow: auto;
+    }
+    .sidebar.show { transform: translateX(0); }
+    .sidebar h2 { font-size: 18px; margin: 4px 0 12px; opacity:.9; }
+
+    .side-group { margin-bottom: 14px; }
+    .side-title { font-size: 12px; letter-spacing:.6px; text-transform:uppercase; color:#cbd3da; margin:10px 0 6px; }
+    .side-btn, .side-link {
+      width: 100%; display: block; text-align:left;
+      background:#495057; color:#fff; border:none; padding:10px 12px; margin-bottom:8px;
+      border-radius:8px; text-decoration:none; cursor:pointer;
+      outline: none;
+      transition: background .15s ease, transform .06s ease;
+    }
+    .side-btn:hover, .side-link:hover { background: var(--muted2); }
+    .side-link.active { background:#2f353a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+
+    .dropdown {
+      background:#212529; border-radius:8px; padding:6px; display:none;
+      overflow:hidden; transition: height .2s ease, opacity .2s ease;
+    }
+    .dropdown.show { display:block; }
+    .dropdown a {
+      display:block; color:#e9ecef; text-decoration:none; padding:8px 10px; border-radius:6px;
+    }
+    .dropdown a:hover { background:#2c3035; }
+
+    /* Backdrop saat sidebar tampil (mobile) */
+    .backdrop {
+      position: fixed; inset: var(--header-h) 0 0 0; /* mulai di bawah header */
+      background: rgba(0,0,0,.35);
+      z-index: var(--z-backdrop); display:none; opacity:0; transition: opacity .2s ease;
+    }
+    .backdrop.show { display:block; opacity:1; }
+
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width: 18px; height: 18px; padding: 0 6px;
+      background: var(--badge-bg); color: var(--badge-txt);
+      border-radius: 999px; font-size: 11px; font-weight: 800;
+      transform: translateY(-1px);
+    }
+
+    /* Desktop: sidebar permanen, backdrop & hamburger disembunyikan */
+    @media (min-width: 992px) {
+      .sidebar { transform: translateX(0); position: sticky; top: var(--header-h); }
+      .main { margin-left: var(--sidew); }
+      .backdrop { display:none !important; }
+      .menu-btn { display:none; }
+    }
+
+    /* Flash sederhana */
+    .flash-wrap{ margin-bottom:10px; }
+    .flash { background:#f8d7da; color:#842029; padding:8px 10px; border-radius:8px; border:1px solid #f5c2c7; }
+    .flash.success { background: #d1e7dd; color:#0f5132; border-color:#badbcc; }
+    .flash.info    { background: #cff4fc; color:#055160; border-color:#b6effb; }
+    .flash.warn    { background: #fff3cd; color:#664d03; border-color:#ffecb5; }
+
+    /* Focus ring aksesibilitas */
+    .side-btn:focus, .side-link:focus, .menu-btn:focus, .btn:focus {
+      outline: 2px solid #a6c8ff;
+      outline-offset: 2px;
+    }
+
+    {% block head %}{% endblock %}
+  </style>
+</head>
+<body>
+
+<!-- ===== Header: blok putih atas ===== -->
+<header id="appHeader" class="app-header" role="banner">
+  <div class="header-inner">
+    <div class="header-left">
+      <button id="menuBtn" class="menu-btn" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false" title="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
+      <div class="app-title">POS App</div>
+    </div>
+    <div class="header-right">
+      <!-- (Kosongkan agar header tetap bersih) -->
+    </div>
+  </div>
+</header>
+
+<!-- Spacer agar konten tidak tertutup header fixed -->
+<div id="headerSpacer" class="header-spacer"></div>
+
+<!-- Backdrop untuk mobile -->
+<div id="sidebarBackdrop" class="backdrop" aria-hidden="true"></div>
+
+<div class="container">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar" aria-label="Sidebar" tabindex="-1">
+    <h2>Menu</h2>
+
+    {% set ep = request.endpoint %}
+
+    <!-- Manajemen -->
+    <div class="side-group">
+      <div class="side-title">Manajemen</div>
+      <button class="side-btn" id="btnManajemen" aria-expanded="false" aria-controls="dropManajemen">⚙️ Manajemen</button>
+      <div id="dropManajemen" class="dropdown" aria-hidden="true">
+        <a class="{{ 'active' if ep == 'produk_list' else '' }}" href="{{ url_for('produk_list') }}">📦 Produk</a>
+        <a class="{{ 'active' if ep == 'kategori_list' else '' }}" href="{{ url_for('kategori_list') }}">🏷️ Kategori</a>
+        <a class="{{ 'active' if ep == 'customer_list' else '' }}" href="{{ url_for('customer_list') }}">👤 Customer</a>
+      </div>
+    </div>
+
+    <!-- Transaksi -->
+    <div class="side-group">
+      <div class="side-title">Transaksi</div>
+      <a class="side-link {{ 'active' if ep == 'index' else '' }}" href="{{ url_for('index') }}">🛒 Pilih Produk</a>
+      <a class="side-link {{ 'active' if ep == 'keranjang_view' else '' }}" href="{{ url_for('keranjang_view') }}">
+        🧺 Keranjang
+        {% if cart_count and cart_count > 0 %}
+          <span class="badge">{{ cart_count }}</span>
+        {% endif %}
+      </a>
+    </div>
+
+    <!-- Laporan -->
+    <div class="side-group">
+      <div class="side-title">Laporan</div>
+      <a class="side-link {{ 'active' if ep == 'transaksi_list' else '' }}" href="{{ url_for('transaksi_list') }}">📃 Daftar Transaksi</a>
+    </div>
+
+    <!-- Rooms -->
+    <div class="side-group">
+      <div class="side-title">Rooms</div>
+      <a class="side-link {{ 'active' if ep == 'rooms_list' else '' }}" href="{{ url_for('rooms_list') }}">🗂️ Rooms</a>
+      <a class="side-link" href="{{ url_for('room_new') }}">➕ Buat Room</a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main" id="mainContent">
+    <!-- Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-wrap">
+        {% for cat, msg in messages %}
+          <div class="flash {{ 'success' if cat=='success' else ('warn' if cat=='warning' else (cat if cat in ['info','error'] else '')) }}">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+  // ====== Ukur tinggi header → spacer & sidebar top ======
+  (function(){
+    const header = document.getElementById('appHeader');
+    const spacer = document.getElementById('headerSpacer');
+    function updateHeaderHeight(){
+      const h = header?.offsetHeight || 64;
+      document.documentElement.style.setProperty('--header-h', h + 'px');
+      if (spacer) spacer.style.height = h + 'px';
+    }
+    updateHeaderHeight();
+    window.addEventListener('resize', () => requestAnimationFrame(updateHeaderHeight));
+  })();
+
+  // ====== Sidebar logic ======
+  const body          = document.body;
+  const sidebar       = document.getElementById('sidebar');
+  const mainContent   = document.getElementById('mainContent');
+  const backdrop      = document.getElementById('sidebarBackdrop');
+  const menuBtn       = document.getElementById('menuBtn');
+
+  const btnManajemen  = document.getElementById('btnManajemen');
+  const dropManajemen = document.getElementById('dropManajemen');
+
+  function openSidebar(){
+    sidebar.classList.add('show');
+    backdrop.classList.add('show');
+    backdrop.setAttribute('aria-hidden', 'false');
+    menuBtn?.setAttribute('aria-expanded', 'true');
+    body.classList.add('sidebar-open');  // → sembunyikan hamburger
+    sidebar.focus();
+  }
+  function closeSidebar(){
+    sidebar.classList.remove('show');
+    backdrop.classList.remove('show');
+    backdrop.setAttribute('aria-hidden', 'true');
+    menuBtn?.setAttribute('aria-expanded', 'false');
+    body.classList.remove('sidebar-open'); // → tampilkan hamburger lagi
+    closeDrop();
+  }
+  function toggleSidebar(){
+    if (sidebar.classList.contains('show')) closeSidebar(); else openSidebar();
+  }
+
+  menuBtn?.addEventListener('click', toggleSidebar);
+  backdrop?.addEventListener('click', closeSidebar);
+  mainContent?.addEventListener('click', () => { if (sidebar.classList.contains('show')) closeSidebar(); });
+
+  // ESC untuk menutup
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && sidebar.classList.contains('show')){
+      closeSidebar();
+      menuBtn?.focus();
+    }
+  });
+
+  // ====== Dropdown Manajemen ======
+  function closeDrop() {
+    if(!dropManajemen) return;
+    dropManajemen.classList.remove('show');
+    btnManajemen?.setAttribute('aria-expanded', 'false');
+    dropManajemen.setAttribute('aria-hidden', 'true');
+    try{ localStorage.setItem('drop:manajemen', '0'); }catch(e){}
+  }
+  function openDrop() {
+    if(!dropManajemen) return;
+    dropManajemen.classList.add('show');
+    btnManajemen?.setAttribute('aria-expanded', 'true');
+    dropManajemen.setAttribute('aria-hidden', 'false');
+    try{ localStorage.setItem('drop:manajemen', '1'); }catch(e){}
+  }
+
+  btnManajemen?.addEventListener('click', () => {
+    const expanded = btnManajemen.getAttribute('aria-expanded') === 'true';
+    expanded ? closeDrop() : openDrop();
+  });
+
+  // Pulihkan status dropdown dari localStorage
+  (function restoreDropdown(){
+    try {
+      const st = localStorage.getItem('drop:manajemen');
+      if(st === '1') openDrop();
+    } catch(e){}
+  })();
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

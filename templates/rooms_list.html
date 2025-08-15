@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Rooms{% endblock %}
+{% block content %}
+<h1>Daftar Rooms</h1>
+<p><a href="{{ url_for('room_new') }}">+ Room Baru</a></p>
+
+<table border="1" cellpadding="8" cellspacing="0">
+  <thead>
+    <tr><th>Kode</th><th>Status</th><th>Item</th><th>Dibuat</th><th>Aksi</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rooms %}
+      <tr>
+        <td>{{ r.kode }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ summaries.get(r.id, 0) }}</td>
+        <td>{{ r.created_at }}</td>
+        <td><a href="{{ url_for('room_switch', kode=r.kode) }}">Pindah</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" style="text-align:center;">Belum ada room.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

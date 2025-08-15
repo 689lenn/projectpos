@@ -1,0 +1,268 @@
+{% extends "base.html" %} {% block title %}Daftar Produk{% endblock %}
+
+{% block head %}
+
+<style>
+  :root{
+    --card-bg:#fff;
+    --border:#e6e8f0;
+    --text:#111827;
+    --muted:#6b7280;
+    --brand:#007bff;
+    --brand-hover:#0064cf;
+    --danger:#dc3545;
+    --danger-hover:#bb2d3b;
+    --ring: rgba(0,123,255,.25);
+    --radius: 12px;
+    --shadow: 0 10px 25px rgba(0,0,0,.06);
+    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
+    --ok:#16a34a; --zero:#9aa1a9; --neg:#ef4444;
+  }
+
+  .page-title{
+    margin: 0 0 6px;
+    text-align:center;
+    letter-spacing:.2px;
+  }
+  .subnote{
+    text-align:center;
+    margin-bottom: 14px;
+    color:var(--muted);
+    font-size: 13px;
+  }
+
+  /* Toolbar */
+  .toolbar{
+    display:flex; gap:10px; flex-wrap:wrap;
+    align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .toolbar-left{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .search{
+    position:relative;
+  }
+  .search input{
+    width: 260px; max-width: 80vw;
+    padding:10px 12px 10px 36px;
+    border:1px solid var(--border); border-radius: 999px;
+    outline:none; transition: box-shadow .15s ease, border-color .15s ease;
+    background:#fff;
+  }
+  .search input:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+  .search .icon{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    color:#9aa1a9; font-size:14px;
+  }
+  .toolbar-right{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:10px 12px; border-radius: 10px; text-decoration:none; font-weight:700; color:#fff; border:none; cursor:pointer;
+  }
+  .btn-primary{ background:var(--brand); }
+  .btn-primary:hover{ background:var(--brand-hover); }
+  .btn-muted{ background:#6c757d; }
+  .btn-muted:hover{ filter: brightness(.95); }
+
+  /* Tabel (desktop) */
+  .table-wrap{ overflow-x:auto; border-radius: 10px; }
+  .table-modern{
+    width:100%; border-collapse:collapse; background:#fff;
+    border-radius:10px; overflow:hidden; border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  .table-modern thead th{
+    background:#f8fafc; color:#334155;
+    font-weight:700; padding:12px; text-align:left;
+    border-bottom: 1px solid #e9eef5;
+  }
+  .table-modern tbody td{
+    padding:12px; border-bottom:1px solid #f0f3f7; vertical-align: middle;
+  }
+  .thumb{
+    width:52px; height:52px; object-fit:cover;
+    border-radius:8px; border:1px solid #eceff3; background:#f6f7fb;
+  }
+  .pname{ font-weight:700; color:var(--text); }
+  .muted{ color:var(--muted); font-size:12px; }
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid #eceff3; background:#f3f4f6; color:#374151;
+    font-size:12px; border-radius:999px; padding:4px 8px;
+  }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .dot-ok{ background:var(--ok); }
+  .dot-zero{ background:var(--zero); }
+  .dot-neg{ background:var(--neg); }
+
+  .td-actions{ white-space:nowrap; text-align:center; }
+  .btn-sm{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:8px 10px; border-radius:8px; border:none; cursor:pointer;
+    font-weight:700; color:#ffffff; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  }
+  .btn-edit{ background:var(--brand); }
+  .btn-edit:hover{ background:var(--brand-hover); }
+  .btn-del{ background:var(--danger); }
+  .btn-del:hover{ background:var(--danger-hover); }
+
+  /* Kartu (mobile) */
+  .cards{ display:none; flex-direction:column; gap:10px; }
+  .card{
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:12px; display:flex; gap:12px; align-items:center;
+    box-shadow: var(--shadow-sm);
+  }
+  .card .info{ flex:1; min-width:0; }
+  .row1{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .row2{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#334155; font-size:13px; }
+  .cta{ display:flex; gap:8px; }
+  .cta form{ display:inline; }
+
+  .empty{
+    text-align:center; color:#6b7280;
+    background:#fff; border:1px dashed #dfe3ea; padding:18px; border-radius:12px;
+  }
+
+  @media (max-width: 720px){
+    .table-wrap{ display:none; }
+    .cards{ display:flex; }
+    .toolbar-right .btn{ padding:9px 12px; }
+  }
+</style>{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Daftar Produk</h1>
+<p class="subnote">Kelola produk Anda: tambah, ubah informasi, atau hapus.</p><div class="toolbar">
+  <div class="toolbar-left">
+    <div class="search">
+      <span class="icon">🔎</span>
+      <input type="text" id="q" placeholder="Cari produk..." aria-label="Cari produk" oninput="filterProducts()">
+    </div>
+  </div>
+  <div class="toolbar-right">
+    <a href="{{ url_for('kategori_list') }}" class="btn btn-muted">🏷️ Kelola Kategori</a>
+    <a href="{{ url_for('produk_tambah') }}" class="btn btn-primary">+ Tambah Produk</a>
+  </div>
+</div>{% if daftar_produk %}
+
+  <!-- Tabel (desktop) -->  <div class="table-wrap">
+    <table class="table-modern" id="tableProduk">
+      <thead>
+        <tr>
+          <th>Produk</th>
+          <th>Harga</th>
+          <th>Stok</th>
+          <th>Kategori</th>
+          <th>Foto</th>
+          <th class="td-actions">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in daftar_produk %}
+        {% set stok = p.stok or 0 %}
+        <tr data-name="{{ p.nama|lower }}">
+          <td>
+            <div class="pname">{{ p.nama }}</div>
+            {% if p.harga_list|length > 0 %}
+              <div class="muted">Harga lain: {{ p.harga_list|length }} opsi</div>
+            {% endif %}
+          </td>
+          <td>
+            <div>Rp {{ "{:,}".format(p.harga) }}</div>
+          </td>
+          <td>
+            <div class="chips">
+              {% if stok > 0 %}
+                <span class="chip"><span class="dot dot-ok"></span> <strong>{{ stok }}</strong></span>
+              {% elif stok == 0 %}
+                <span class="chip"><span class="dot dot-zero"></span> <strong>0</strong></span>
+              {% else %}
+                <span class="chip"><span class="dot dot-neg"></span> <strong style="color:var(--neg);">{{ stok }}</strong></span>
+              {% endif %}
+            </div>
+          </td>
+          <td>{{ p.kategori.nama if p.kategori else '-' }}</td>
+          <td>
+            {% if p.foto %}
+              <img class="thumb" src="{{ url_for('static', filename='uploads/' ~ p.foto) }}" alt="{{ p.nama }}">
+            {% else %}
+              <img class="thumb" src="{{ url_for('static', filename='uploads/placeholder.png') }}" alt="no image">
+            {% endif %}
+          </td>
+          <td class="td-actions">
+            <a href="{{ url_for('produk_edit', id=p.id) }}" class="btn-sm btn-edit">🖊 Edit</a>
+            <form action="{{ url_for('produk_hapus', id=p.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Yakin hapus produk ini?');">
+              <button type="submit" class="btn-sm btn-del">🗑 Hapus</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>  <!-- Cards (mobile) -->  <div class="cards" id="cardsProduk">
+    {% for p in daftar_produk %}
+    {% set stok = p.stok or 0 %}
+    <div class="card" data-name="{{ p.nama|lower }}">
+      {% if p.foto %}
+        <img class="thumb" src="{{ url_for('static', filename='uploads/' ~ p.foto) }}" alt="{{ p.nama }}">
+      {% else %}
+        <img class="thumb" src="{{ url_for('static', filename='uploads/placeholder.png') }}" alt="no image">
+      {% endif %}<div class="info">
+    <div class="row1">
+      <div class="pname">{{ p.nama }}</div>
+    </div>
+    <div class="row2">
+      <span class="chip">Harga: <strong>Rp {{ "{:,}".format(p.harga) }}</strong></span>
+      <span class="chip">
+        Stok:
+        {% if stok > 0 %}
+          <strong style="color:var(--ok);">{{ stok }}</strong>
+        {% elif stok == 0 %}
+          <strong style="color:var(--zero);">0</strong>
+        {% else %}
+          <strong style="color:var(--neg);">{{ stok }}</strong>
+        {% endif %}
+      </span>
+      <span class="chip">Kategori: <strong>{{ p.kategori.nama if p.kategori else '-' }}</strong></span>
+      {% if p.harga_list|length > 0 %}
+        <span class="chip">Harga lain: <strong>{{ p.harga_list|length }}</strong></span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="cta">
+    <a href="{{ url_for('produk_edit', id=p.id) }}" class="btn-sm btn-edit">🖊</a>
+    <form action="{{ url_for('produk_hapus', id=p.id) }}" method="post" onsubmit="return confirm('Yakin hapus produk ini?');">
+      <button type="submit" class="btn-sm btn-del">🗑</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+  </div>
+{% else %}
+  <div class="empty">
+    Belum ada produk. Klik <strong>+ Tambah Produk</strong> untuk menambahkan.
+  </div>
+{% endif %}<script>
+  function filterProducts(){
+    const q = (document.getElementById('q').value || '').toLowerCase().trim();
+
+    // Tabel
+    const rows = document.querySelectorAll('#tableProduk tbody tr');
+    rows.forEach(tr => {
+      const name = (tr.getAttribute('data-name') || '');
+      tr.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+
+    // Cards
+    const cards = document.querySelectorAll('#cardsProduk .card');
+    cards.forEach(card => {
+      const name = (card.getAttribute('data-name') || '');
+      card.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+  }
+</script>{% endblock %}

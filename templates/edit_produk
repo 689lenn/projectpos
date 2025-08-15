@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Edit Produk</title>
+</head>
+<body>
+  <h1>Edit Produk</h1>
+  <form action="{{ url_for('edit_produk', id=produk.id) }}" method="POST" enctype="multipart/form-data">
+    <label>Nama:</label><br />
+    <input type="text" name="nama" value="{{ produk.nama }}" required><br /><br />
+    <label>Harga:</label><br />
+    <input type="number" name="harga" value="{{ produk.harga }}" required><br /><br />
+    <label>Stok:</label><br />
+    <input type="number" name="stok" value="{{ produk.stok }}" required><br /><br />
+    <label>Foto:</label><br />
+    <input type="file" name="foto" accept="image/*"><br />
+    {% if produk.foto %}
+      <img src="{{ url_for('static', filename='uploads/' + produk.foto) }}" alt="foto" width="100" style="margin-top:10px;">
+    {% endif %}
+    <br /><br />
+    <button type="submit">Update</button>
+  </form>
+  <p><a href="{{ url_for('produk') }}">Kembali ke Daftar Produk</a></p>
+</body>
+</html>
