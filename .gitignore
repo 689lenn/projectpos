@@ -8,7 +8,7 @@ venv/
 env/
 *.env
 
-# Flask / instance / DB
+# Flask / DB
 instance/
 database.db
 
