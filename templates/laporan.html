@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Laporan & Analitik{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card:#fff; --border:#e6e8f0; --muted:#6b7280; --text:#111827;
+    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
+    --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
+  }
+  .layout {
+    display:grid; grid-template-columns: 260px 1fr; gap:14px;
+  }
+  @media (max-width: 900px){
+    .layout { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow: var(--shadow);
+  }
+  .nav-panel { padding:12px; }
+  .nav-title { font-weight:800; margin:0 0 8px; }
+  .nav-list { display:flex; flex-direction:column; gap:8px; }
+  .nav-btn {
+    text-align:left; width:100%;
+    padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+    background:#fff; cursor:pointer;
+  }
+  .nav-btn.active { background:#eef5ff; border-color:#cfe3ff; }
+
+  .content { padding:14px; }
+
+  .grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
+  @media (max-width: 720px){ .grid{ grid-template-columns:1fr; } }
+
+  .card-mini{
+    background:#f7faff; border:1px solid #e9ecf4; border-radius:10px; padding:10px;
+  }
+  .label { font-size:12px; color:#6b7280; margin-bottom:4px; }
+  .val   { font-size:18px; font-weight:800; }
+
+  .filter {
+    display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px;
+    background:#fafbff; border:1px solid #e9ecf4; border-radius:12px; padding:10px;
+  }
+  .filter .group { display:flex; flex-direction:column; gap:6px; }
+  .control{
+    padding:8px 10px; border:1px solid var(--border);
+    border-radius:10px; outline:none; background:#fff;
+  }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+
+  table { width:100%; border-collapse:collapse; }
+  th, td { border:1px solid #e9ecf4; padding:10px; font-size:14px; text-align:left; }
+  th { background:#f3f6ff; }
+  .right { text-align:right; }
+
+  .muted { color: var(--muted); font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 10px;">Laporan & Analitik</h1>
+<p class="muted">Pilih jenis laporan di panel kiri. Konten laporan tampil di panel kanan.</p>
+
+<div class="layout">
+  <!-- NAV KIRI -->
+  <div class="panel nav-panel">
+    <div class="nav-title">Jenis Laporan</div>
+    <div class="nav-list">
+      <button type="button" class="nav-btn active" data-tab="penjualan">📈 Penjualan Periodik</button>
+      <button type="button" class="nav-btn" data-tab="produk">📦 Produk Terlaris</button>
+      <button type="button" class="nav-btn" data-tab="stok">📮 Stok & Inventory</button>
+      <button type="button" class="nav-btn" data-tab="profit">💰 Laba Kotor/Bersih</button>
+      <button type="button" class="nav-btn" data-tab="hutang">🧾 Hutang Piutang</button>
+      <button type="button" class="nav-btn" data-tab="kasir">👤 Kasir/Shift</button>
+      <button type="button" class="nav-btn" data-tab="metode">💳 Metode Pembayaran</button>
+      <button type="button" class="nav-btn" data-tab="dashboard">📊 Dashboard Analitik</button>
+    </div>
+  </div>
+
+  <!-- KONTEN KANAN -->
+  <div class="panel content">
+    <!-- TAB: Penjualan Periodik -->
+    <section id="tab-penjualan">
+      <h2 style="margin:0 0 10px;">📈 Penjualan Periodik</h2>
+      <div class="filter">
+        <div class="group">
+          <label for="fStart" class="label">Mulai</label>
+          <input id="fStart" class="control" type="date" value="{{ start_default }}">
+        </div>
+        <div class="group">
+          <label for="fEnd" class="label">Sampai</label>
+          <input id="fEnd" class="control" type="date" value="{{ end_default }}">
+        </div>
+        <div class="group">
+          <label for="fGroup" class="label">Kelompok</label>
+          <select id="fGroup" class="control">
+            <option value="day">Harian</option>
+            <option value="week">Mingguan</option>
+            <option value="month">Bulanan</option>
+          </select>
+        </div>
+        <div class="group">
+          <button id="btnApply" class="control" style="background:var(--brand); color:#fff; font-weight:800;">Terapkan</button>
+        </div>
+      </div>
+
+      <!-- Ringkasan -->
+      <div class="grid" id="summaryCards">
+        <div class="card-mini">
+          <div class="label">Total Transaksi</div>
+          <div class="val" id="sumTx">0</div>
+        </div>
+        <div class="card-mini">
+          <div class="label">Total Omzet</div>
+          <div class="val" id="sumOmzet">Rp 0</div>
+        </div>
+        <div class="card-mini">
+          <div class="label">Rata-rata per Transaksi</div>
+          <div class="val" id="sumAvg">Rp 0</div>
+        </div>
+      </div>
+
+      <!-- Tabel detail -->
+      <div style="margin-top: 12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Periode</th>
+              <th class="right">Jumlah Transaksi</th>
+              <th class="right">Omzet</th>
+              <th class="right">Rata-rata/Transaksi</th>
+            </tr>
+          </thead>
+          <tbody id="tblBody">
+            <tr><td colspan="4" class="muted">Belum ada data. Klik "Terapkan".</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB lainnya (placeholder) -->
+    <section id="tab-produk" style="display:none;">
+      <h2>📦 Produk Terlaris</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+    <section id="tab-stok" style="display:none;">
+      <h2>📮 Stok & Inventory</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+    <section id="tab-profit" style="display:none;">
+      <h2>💰 Laba Kotor/Bersih</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+    <section id="tab-hutang" style="display:none;">
+      <h2>🧾 Hutang Piutang</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+    <section id="tab-kasir" style="display:none;">
+      <h2>👤 Kasir/Shift</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+    <section id="tab-metode" style="display:none;">
+      <h2>💳 Metode Pembayaran</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+    <section id="tab-dashboard" style="display:none;">
+      <h2>📊 Dashboard Analitik</h2>
+      <p class="muted">(Akan dibuat di tahap berikutnya)</p>
+    </section>
+  </div>
+</div>
+
+<script>
+  // ====== Helper format Rupiah ======
+  function rupiah(n){
+    try { return 'Rp ' + (n||0).toLocaleString('id-ID'); }
+    catch(e){ return 'Rp ' + n; }
+  }
+
+  // ====== Tab switch (kiri) ======
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const tabs = {
+    penjualan: document.getElementById('tab-penjualan'),
+    produk: document.getElementById('tab-produk'),
+    stok: document.getElementById('tab-stok'),
+    profit: document.getElementById('tab-profit'),
+    hutang: document.getElementById('tab-hutang'),
+    kasir: document.getElementById('tab-kasir'),
+    metode: document.getElementById('tab-metode'),
+    dashboard: document.getElementById('tab-dashboard'),
+  };
+  navBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      navBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      Object.keys(tabs).forEach(k => tabs[k].style.display = (k===tab?'block':'none'));
+    });
+  });
+
+  // ====== Penjualan Periodik: filter & fetch ======
+  const fStart = document.getElementById('fStart');
+  const fEnd   = document.getElementById('fEnd');
+  const fGroup = document.getElementById('fGroup');
+  const btnApply = document.getElementById('btnApply');
+
+  const elSumTx = document.getElementById('sumTx');
+  const elSumOmzet = document.getElementById('sumOmzet');
+  const elSumAvg = document.getElementById('sumAvg');
+  const elTBody = document.getElementById('tblBody');
+
+  btnApply.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    const start = fStart.value;
+    const end   = fEnd.value;
+    const group = fGroup.value || 'day';
+
+    const url = new URL('{{ url_for("laporan_penjualan_periodik_data") }}', window.location.origin);
+    url.searchParams.set('start', start);
+    url.searchParams.set('end', end);
+    url.searchParams.set('group', group);
+
+    elTBody.innerHTML = `<tr><td colspan="4" class="muted">Memuat data...</td></tr>`;
+
+    try{
+      const r = await fetch(url.toString());
+      const j = await r.json();
+      if(!j.ok) throw new Error('Gagal memuat.');
+
+      const rows = j.rows || [];
+      if(rows.length === 0){
+        elTBody.innerHTML = `<tr><td colspan="4" class="muted">Tidak ada data pada rentang tanggal ini.</td></tr>`;
+        elSumTx.textContent = '0';
+        elSumOmzet.textContent = 'Rp 0';
+        elSumAvg.textContent = 'Rp 0';
+        return;
+      }
+
+      // akumulasi summary
+      let totalTx = 0, totalOmzet = 0;
+      const html = rows.map(rw=>{
+        totalTx += (rw.count_tx || 0);
+        totalOmzet += (rw.omzet || 0);
+        return `
+          <tr>
+            <td>${rw.period}</td>
+            <td class="right">${(rw.count_tx||0)}</td>
+            <td class="right">${rupiah(rw.omzet||0)}</td>
+            <td class="right">${rupiah(rw.avg_per_tx||0)}</td>
+          </tr>
+        `;
+      }).join('');
+      elTBody.innerHTML = html;
+
+      const avgPerTxAll = totalTx ? Math.round(totalOmzet/totalTx) : 0;
+      elSumTx.textContent = String(totalTx);
+      elSumOmzet.textContent = rupiah(totalOmzet);
+      elSumAvg.textContent = rupiah(avgPerTxAll);
+    }catch(err){
+      elTBody.innerHTML = `<tr><td colspan="4" class="muted" style="color:#dc3545;">Terjadi kesalahan memuat data.</td></tr>`;
+    }
+  });
+</script>
+{% endblock %}

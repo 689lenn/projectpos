@@ -7,189 +7,169 @@
     --card:#fff; --border:#e6e8f0; --muted:#6b7280; --text:#111827;
     --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
     --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
+    --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444;
   }
-  .page-wrap { max-width: 960px; margin: 0 auto; }
-  .page-head {
-    display:flex; align-items:center; justify-content:space-between;
-    gap:10px; margin-bottom:12px;
-  }
-  .title { margin:0; font-size: 20px; }
-  .muted { color: var(--muted); }
-
-  .actions { display:flex; gap:8px; flex-wrap: wrap; }
-  .btn {
-    border:none; border-radius:10px; padding:10px 12px; cursor:pointer;
-    background: var(--brand); color:#fff; font-weight:700;
-  }
-  .btn:hover { background: var(--brand-hover); }
-  .btn-muted { background:#6c757d; }
-  .btn-muted:hover { filter: brightness(.95); }
-
+  .wrap { max-width: 840px; margin: 0 auto; }
   .card {
     background:var(--card); border:1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-    padding: 14px;
+    border-radius:var(--radius); padding:16px; box-shadow: var(--shadow);
+  }
+  h1.title { margin:4px 0 10px; }
+  .actions { display:flex; gap:10px; justify-content:flex-end; margin-bottom: 12px; }
+  .btn { border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; color:#fff; text-decoration:none; }
+  .btn-muted { background:#6c757d; }
+  .btn-muted:hover { filter: brightness(.95); }
+  .btn-primary{ background:var(--brand); }
+  .btn-primary:hover{ background:var(--brand-hover); }
+
+  .meta{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    background:#fafbff; border:1px solid #e9ecf4; border-radius:12px; padding:10px 12px; margin-bottom:14px;
+  }
+  .mrow{ display:flex; justify-content:space-between; gap:10px; }
+  .mkey{ color:var(--muted); }
+  .badge{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:800; }
+  .badge.lunas{ background:#e6f9ed; color:#146c2e; border:1px solid #c5efd3; }
+  .badge.hutang{ background:#fff6e5; color:#995700; border:1px solid #ffe2ad; }
+
+  table { width:100%; border-collapse:collapse; margin-top: 6px; }
+  th, td { border:1px solid #eaecef; padding:8px; }
+  th { background:#f6f7fb; text-align:left; }
+  .right { text-align:right; }
+
+  .total-box{
+    margin-top:12px; background:#f9fafc; border:1px solid #e9ecf4; border-radius:12px; padding:12px;
+  }
+  .row { display:flex; align-items:center; justify-content:space-between; margin:6px 0; }
+  .row strong { font-size: 16px; }
+
+  .note {
+    margin-top:10px; padding:10px 12px; border-left:4px solid var(--warn);
+    background:#fff8e7; color:#7a5200; border-radius:8px;
   }
 
-  /* ===== Receipt style ===== */
-  .receipt-wrap { display:flex; flex-direction:column; gap:12px; }
-
-  .receipt {
-    background: #fff;
-    border:1px dashed #cfd6e1;
-    border-radius: 12px;
-    max-width: 380px; /* tampil di layar */
-    margin: 0 auto;
-    padding: 14px 14px 18px;
-    font-family: 'Courier New', Courier, monospace; /* nuansa thermal */
-  }
-  .r-head { text-align:center; }
-  .r-brand { font-weight: 800; font-size: 18px; letter-spacing: .8px; }
-  .r-meta  { font-size: 12px; color: #6b7280; margin-top:2px; }
-  .r-line  { border-top: 1px dashed #cfd6e1; margin: 8px 0; }
-  .r-row   { display:flex; align-items:flex-start; justify-content:space-between; gap:6px; font-size: 13px; }
-  .r-bold  { font-weight: 700; }
-  .r-right { text-align: right; }
-  .r-items { margin-top: 6px; }
-  .r-item-name { font-weight:700; }
-  .r-item-sub { font-size:12px; color:#6b7280; }
-
-  .r-total-box { margin-top: 6px; }
-  .r-total-box .r-row { font-size: 14px; }
-  .r-total { font-size: 16px; }
-
-  .r-footer { margin-top: 12px; text-align:center; font-size:12px; color: #6b7280; }
-
-  /* Print khusus: sembunyikan semua kecuali .receipt */
   @media print {
-    @page {
-      size: 80mm auto; /* akan bekerja di beberapa browser/driver thermal */
-      margin: 4mm;
-    }
-    body * { visibility: hidden; }
-    .receipt, .receipt * { visibility: visible; }
-    .receipt {
-      position: absolute; left: 0; top: 0;
-      max-width: unset; width: 80mm; margin: 0; border: none;
-      box-shadow: none;
-      font-size: 12px;
-    }
-    .btn, .actions, .page-head, .flash-wrap { display: none !important; }
+    body { background:#fff; }
+    .actions, .btn { display:none !important; }
+    .card { box-shadow:none; border:none; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-wrap">
-  <div class="page-head">
-    <div>
-      <h1 class="title">Detail Transaksi #{{ transaksi.id }}</h1>
-      <div class="muted">Tanggal: {{ transaksi.tanggal|format_tanggal }}</div>
-    </div>
-    <div class="actions">
-      <button class="btn" onclick="window.print()">🖨️ Cetak</button>
-      <button class="btn btn-muted" onclick="shareNota()">🔗 Share</button>
-      <a href="{{ url_for('transaksi_list') }}" class="btn btn-muted">← Kembali</a>
-    </div>
+<div class="wrap">
+  <div class="actions no-print">
+    <a href="{{ prev_url }}" class="btn btn-muted">← Kembali</a>
+    <button class="btn btn-primary" id="btnPrint">🖨️ Cetak</button>
+    <button class="btn btn-muted" id="btnShare">🔗 Share</button>
   </div>
 
-  <div class="card receipt-wrap">
-    <!-- NOTA -->
-    <div id="nota" class="receipt">
-      <div class="r-head">
-        <div class="r-brand">ROMA TOP</div>
-        <div class="r-meta">0851 628 11 628</div>
-      </div>
+  <div class="card" id="receipt">
+    <h1 class="title">Detail Transaksi</h1>
 
-      <div class="r-line"></div>
-
-      <div class="r-row">
-        <div>No. Trx: <span class="r-bold">#{{ transaksi.id }}</span></div>
-        <div class="r-right">Tgl: {{ transaksi.tanggal|format_tanggal }}</div>
+    <!-- META -->
+    <div class="meta">
+      <div class="mrow">
+        <span class="mkey">No. Transaksi</span>
+        <span>#{{ transaksi.id }}</span>
       </div>
-      <div class="r-row">
-        <div>Pelanggan:</div>
-        <div class="r-right">
-          {% if transaksi.customer %}
-            {{ transaksi.customer.nama }}
+      <div class="mrow">
+        <span class="mkey">Tanggal</span>
+        <span>{{ transaksi.tanggal|format_tanggal if transaksi.tanggal else '-' }}</span>
+      </div>
+      <div class="mrow">
+        <span class="mkey">Status</span>
+        <span>
+          {% if transaksi.status == 'HUTANG' %}
+            <span class="badge hutang">HUTANG</span>
           {% else %}
-            <span class="muted">-</span>
+            <span class="badge lunas">LUNAS</span>
           {% endif %}
-        </div>
+        </span>
       </div>
+      <div class="mrow">
+        <span class="mkey">Pelanggan</span>
+        <span>
+          {% if transaksi.customer %}
+            {{ transaksi.customer.nama }} — {{ transaksi.customer.email }}
+          {% else %}
+            (Tanpa pelanggan)
+          {% endif %}
+        </span>
+      </div>
+    </div>
 
-      <div class="r-line"></div>
-      <div class="r-items">
+    <!-- ITEMS -->
+    <table>
+      <thead>
+        <tr>
+          <th>Produk</th>
+          <th class="right">Qty</th>
+        </tr>
+      </thead>
+      <tbody>
         {% for it in transaksi.item_transaksi %}
           {% set p = it.produk %}
-          {% set h = p.harga %}
-          {% set sub = h * it.jumlah %}
-          <div class="r-row">
-            <div>
-              <div class="r-item-name">{{ p.nama }}</div>
-              <div class="r-item-sub">{{ h | rupiah }} × {{ it.jumlah }}</div>
-            </div>
-            <div class="r-right">{{ sub | rupiah }}</div>
-          </div>
+          <tr>
+            <td>
+              <div><strong>{{ p.nama if p else 'Produk #' ~ it.produk_id }}</strong></div>
+            </td>
+            <td class="right">{{ it.jumlah }}</td>
+          </tr>
         {% endfor %}
-      </div>
+      </tbody>
+    </table>
 
-      <div class="r-line"></div>
+    <!-- TOTAL & PEMBAYARAN -->
+    <div class="total-box">
+      <div class="row"><span>Total</span><strong>Rp {{ "{:,}".format(transaksi.total|int) }}</strong></div>
 
-      <div class="r-total-box">
-        <div class="r-row">
-          <div>Total</div>
-          <div class="r-right r-bold r-total">{{ transaksi.total | rupiah }}</div>
-        </div>
-        <div class="r-row">
-          <div>Bayar</div>
-          <div class="r-right">{{ transaksi.bayar or 0 }}</div>
-        </div>
-        <div class="r-row">
-          <div>Kembalian</div>
-          <div class="r-right">{{ transaksi.kembalian or 0 }}</div>
-        </div>
-      </div>
-
-      <div class="r-line"></div>
-      <div class="r-footer">
-        Terima kasih 🙏<br/>Simpan nota ini sebagai bukti transaksi.
-      </div>
+      {% if transaksi.status == 'HUTANG' %}
+        <div class="row"><span>Bayar Saat Ini</span><strong>Rp {{ "{:,}".format((transaksi.bayar or 0)|int) }}</strong></div>
+        <div class="row"><span>Sisa Hutang</span><strong style="color:#b45309;">Rp {{ "{:,}".format((transaksi.sisa or 0)|int) }}</strong></div>
+        {% if transaksi.jatuh_tempo %}
+          <div class="row"><span>Jatuh Tempo</span><strong>{{ transaksi.jatuh_tempo|format_tanggal }}</strong></div>
+        {% endif %}
+      {% else %}
+        <div class="row"><span>Bayar</span><strong>Rp {{ "{:,}".format((transaksi.bayar or 0)|int) }}</strong></div>
+        <div class="row"><span>Kembalian</span><strong>Rp {{ "{:,}".format((transaksi.kembalian or 0)|int) }}</strong></div>
+      {% endif %}
     </div>
 
-    <div class="muted" style="font-size:12px;">
-      <strong>Catatan:</strong> Harga item pada nota menggunakan harga produk saat ini.
-      Total transaksi tersimpan adalah {{ transaksi.total | rupiah }}.
-    </div>
+    {% if transaksi.status == 'HUTANG' %}
+      <div class="note">
+        Transaksi ini tersimpan sebagai <strong>HUTANG</strong>.  
+        Sisa yang belum dibayar: <strong>Rp {{ "{:,}".format((transaksi.sisa or 0)|int) }}</strong>.
+        {% if transaksi.jatuh_tempo %}Jatuh tempo pada <strong>{{ transaksi.jatuh_tempo|format_tanggal }}</strong>.{% endif %}
+        <br>Pelunasan dapat dilakukan di menu <em>Hutang Piutang</em> (akan kita buat di modul terpisah).
+      </div>
+    {% endif %}
   </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-  // Format rupiah di server via filter 'rupiah'. Di klien untuk share/print tidak perlu.
+  // Cetak
+  document.getElementById('btnPrint')?.addEventListener('click', ()=>{ window.print(); });
 
-  async function shareNota(){
-    const shareData = {
-      title: 'Transaksi #{{ transaksi.id }}',
-      text: 'Nota transaksi #{{ transaksi.id }} — total {{ transaksi.total | rupiah }}',
-      url: window.location.href
-    };
-    if (navigator.share){
+  // Share (Web Share API)
+  document.getElementById('btnShare')?.addEventListener('click', async ()=>{
+    const url = window.location.href;
+    const title = 'Detail Transaksi #{{ transaksi.id }}';
+    const text = 'Total: Rp {{ "{:,}".format(transaksi.total|int) }} — Status: {{ transaksi.status }}';
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+      } catch(e) {}
+    } else {
+      // Fallback: copy ke clipboard
       try{
-        await navigator.share(shareData);
+        await navigator.clipboard.writeText(`${title}\n${text}\n${url}`);
+        alert('Link transaksi disalin ke clipboard.');
       }catch(e){
-        // dibatalkan user, silent
-      }
-    }else{
-      // fallback: salin URL
-      try{
-        await navigator.clipboard.writeText(window.location.href);
-        alert('Link nota disalin ke clipboard.');
-      }catch(e){
-        prompt('Salin link nota ini:', window.location.href);
+        alert(url);
       }
     }
-  }
+  });
 </script>
 {% endblock %}

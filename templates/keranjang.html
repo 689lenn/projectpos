@@ -8,14 +8,23 @@
   th, td { border:1px solid #ddd; padding:8px; text-align:left; }
   th { background:#f3f3f3; }
   .right { text-align:right; }
-  .actions { display:flex; gap:8px; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; }
   .topbar { margin-bottom:10px; display:flex; gap:10px; }
-  input[type="number"] { width:72px; }
+
+  input[type="number"] { width:90px; }
+
   .footer-actions{
     margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;
   }
 
-  /* Modal ringkas untuk Potensi Keuntungan */
+  /* Link harga (klik untuk ubah) */
+  .price-link{
+    display:inline-block; padding:4px 8px; border-radius:6px; cursor:pointer;
+    background:#f3f4f6; border:1px solid #e5e7eb; color:#111827; text-decoration:none;
+  }
+  .price-link:hover{ background:#eef2ff; border-color:#c7d2fe; }
+
+  /* Modal ringkas (Ubah Harga & Potensi Keuntungan) */
   .modal-backdrop{position:fixed; inset:0; background:rgba(16,24,40,.4); display:none; align-items:center; justify-content:center; z-index:2000;}
   .modal-backdrop.show{display:flex;}
   .modal{
@@ -24,6 +33,7 @@
   }
   .modal-head{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #eef1f5;}
   .modal-body{padding:14px;}
+  .modal-foot{padding:12px 14px; border-top:1px solid #eef1f5; display:flex; justify-content:flex-end; gap:8px;}
 </style>
 {% endblock %}
 
@@ -37,14 +47,14 @@
 <div class="cart">
   {% if keranjang %}
 
-  <!-- FORM UPDATE QTY -->
+  <!-- FORM UPDATE QTY (HANYA JUMLAH, AUTO-SAVE) -->
   <form id="updateForm" action="{{ url_for('keranjang_update') }}" method="post">
     <table>
       <thead>
         <tr>
           <th>Produk</th>
           <th>Harga</th>
-          <th>Jumlah</th>
+          <th>Jumlah (edit)</th>
           <th class="right">Subtotal</th>
           <th>Aksi</th>
         </tr>
@@ -58,15 +68,28 @@
               {% if item.stok is defined %}
                 <div style="font-size:12px;color:#666;">Stok: {{ item.stok }}</div>
               {% endif %}
-            </td>
-            <td>Rp {{ "{:,}".format(item.harga) }}</td>
-            <td>
               <input type="hidden" name="key[]" value="{{ key }}">
-              <input type="number" name="qty[]" min="0" value="{{ item.jumlah }}">
+            </td>
+            <td>
+              <!-- Harga ditampilkan sebagai link; klik → modal ubah harga -->
+              <a href="#" class="price-link"
+                 onclick="openPriceModal('{{ key }}', {{ item.harga }}, '{{ item.nama|e }}'); return false;">
+                 Rp {{ '{:,}'.format(item.harga) }}
+              </a>
+            </td>
+            <td>
+              <input type="number"
+                     name="qty[]"
+                     min="0"
+                     value="{{ item.jumlah }}"
+                     oninput="autoSaveQty()">
+              <!-- Note: harga tidak diinput di form ini -->
+              <input type="hidden" name="price[]" value="{{ item.harga }}">
             </td>
             <td class="right">Rp {{ "{:,}".format(subtotal) }}</td>
             <td class="actions">
-              <!-- Tombol hapus: pakai form terpisah via atribut form -->
+              <!-- Hapus 1 item -->
+              <form id="del-{{ key }}" action="{{ url_for('hapus_item_keranjang', pid=key) }}" method="post" style="display:inline;"></form>
               <button type="submit"
                       class="btn btn-danger"
                       form="del-{{ key }}"
@@ -85,22 +108,21 @@
         </tr>
       </tfoot>
     </table>
-
-    <div class="footer-actions">
-      <button type="submit" class="btn btn-primary">💾 Update Jumlah</button>
-
-      <!-- Tombol lihat potensi keuntungan -->
-      <button type="button" class="btn btn-success" onclick="openProfit()">💡 Potensi Keuntungan</button>
-
-      <!-- Checkout (GET ke /pembayaran), di luar updateForm -->
-      <a href="{{ url_for('pembayaran') }}" class="btn btn-success" onclick="return confirm('Lanjut ke pembayaran?')">✅ Checkout</a>
-    </div>
   </form>
 
-  <!-- FORM-FORM HAPUS TERPISAH (tidak nested) -->
-  {% for key, item in keranjang.items() %}
-    <form id="del-{{ key }}" action="{{ url_for('hapus_item_keranjang', pid=key) }}" method="post"></form>
-  {% endfor %}
+  <!-- Footer Actions (DI LUAR updateForm agar tidak nested) -->
+  <div class="footer-actions">
+    <!-- BATALKAN SEMUA -->
+    <form action="{{ url_for('keranjang_clear') }}" method="post" onsubmit="return confirm('Batalkan & kosongkan semua item dari keranjang?')">
+      <button type="submit" class="btn btn-muted">⛔ Batalkan Keranjang</button>
+    </form>
+
+    <!-- Potensi Keuntungan -->
+    <button type="button" class="btn btn-success" onclick="openProfit()">💡 Potensi Keuntungan</button>
+
+    <!-- Checkout -->
+    <a href="{{ url_for('pembayaran') }}" class="btn btn-success" onclick="return confirm('Lanjut ke pembayaran?')">✅ Checkout</a>
+  </div>
 
   {% else %}
     <p>Keranjang masih kosong. Silakan pilih produk di halaman produk.</p>
@@ -109,6 +131,28 @@
   {% if error %}
     <p style="color:#dc3545; margin-top:10px;">{{ error }}</p>
   {% endif %}
+</div>
+
+<!-- Modal UBAH HARGA -->
+<div id="priceBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="priceTitle">
+    <div class="modal-head">
+      <div id="priceTitle" style="font-weight:800;">Ubah Harga</div>
+      <button class="btn btn-muted" onclick="closePriceModal()">Tutup</button>
+    </div>
+    <form id="priceForm" method="post" action="{{ url_for('keranjang_update_price') }}">
+      <div class="modal-body">
+        <div style="margin-bottom:8px;color:#6b7280;">Produk: <strong id="priceNama"></strong></div>
+        <input type="hidden" name="key" id="priceKey">
+        <label for="priceInput" style="display:block; font-size:13px; color:#6b7280; margin-bottom:6px;">Harga Baru (Rp)</label>
+        <input id="priceInput" name="price" type="number" min="0" value="0" style="width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:8px;">
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-muted" onclick="closePriceModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Modal Potensi Keuntungan -->
@@ -125,7 +169,38 @@
 </div>
 
 <script>
-  // ====== Potensi Keuntungan (contoh sederhana: margin 20%)
+  // ====== Auto-save QTY (tanpa tombol update) ======
+  let qtyTimer = null;
+  function autoSaveQty(){
+    clearTimeout(qtyTimer);
+    qtyTimer = setTimeout(()=>{
+      const form = document.getElementById('updateForm');
+      const fd = new FormData(form);
+      fetch(form.action, { method:'POST', body: fd })
+        .then(()=> location.reload())
+        .catch(()=> form.submit());
+    }, 350);
+  }
+
+  // ====== Modal UBAH HARGA ======
+  function openPriceModal(key, harga, nama){
+    document.getElementById('priceKey').value   = key;
+    document.getElementById('priceInput').value = harga || 0;
+    document.getElementById('priceNama').textContent = nama || '';
+    const bd = document.getElementById('priceBackdrop');
+    bd.classList.add('show');
+    bd.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+    setTimeout(()=> document.getElementById('priceInput').focus(), 50);
+  }
+  function closePriceModal(){
+    const bd = document.getElementById('priceBackdrop');
+    bd.classList.remove('show');
+    bd.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+
+  // ====== Potensi Keuntungan (contoh sederhana: margin 20%) ======
   function fmt(n){ try{ return 'Rp ' + (n||0).toLocaleString('id-ID'); }catch(e){ return 'Rp ' + n; } }
   function openProfit(){
     const rows = [...document.querySelectorAll('tbody tr')];
@@ -133,19 +208,26 @@
     let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
 
     rows.forEach(tr => {
-      const nama = tr.querySelector('td strong')?.textContent || '';
-      const harga = parseInt((tr.children[1]?.textContent || '0').replace(/[^\d]/g,''),10) || 0;
-      const qty = parseInt(tr.querySelector('input[name="qty[]"]')?.value || '0',10) || 0;
-      // contoh kalkulasi: margin 20%
+      const nama  = tr.querySelector('td strong')?.textContent || '';
+      // Ambil harga dari link (innerText) → ambil angka saja
+      const hargaText = tr.querySelector('.price-link')?.textContent || '0';
+      const harga = parseInt(hargaText.replace(/[^\d]/g,''), 10) || 0;
+      const qty   = parseInt(tr.querySelector('input[name="qty[]"]')?.value || '0', 10) || 0;
+
       const profit = Math.round(harga * 0.20) * qty;
       totalProfit += profit;
+
       if(nama && qty>0){
-        html += `<div style="display:flex; justify-content:space-between;"><span>${nama} × ${qty}</span><strong>${fmt(profit)}</strong></div>`;
+        html += `<div style="display:flex; justify-content:space-between;">
+                  <span>${nama} × ${qty}</span><strong>${fmt(profit)}</strong>
+                </div>`;
       }
     });
 
     html += `<hr style="border:none; border-top:1px solid #eee;">`;
-    html += `<div style="display:flex; justify-content:space-between;"><span>Total Potensi</span><strong>${fmt(totalProfit)}</strong></div>`;
+    html += `<div style="display:flex; justify-content:space-between;">
+               <span>Total Potensi</span><strong>${fmt(totalProfit)}</strong>
+             </div>`;
     html += '</div>';
 
     document.getElementById('profitBody').innerHTML = html;

@@ -158,29 +158,48 @@
   @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
 
   /* FAB Keranjang */
-  .fab-cart{
-    position: fixed; right: 18px; bottom: 18px; z-index: 1800;
-    background: var(--fab); color:#fff; border-radius: 999px; padding: 12px 16px;
-    display:flex; align-items:center; gap:8px; text-decoration:none; font-weight:800;
-    box-shadow: 0 12px 22px rgba(14,165,233,.35);
-    transition: transform .08s ease, background .15s ease;
+.fab-cart{
+    position: fixed;
+    right: 18px;
+    bottom: calc(18px + env(safe-area-inset-bottom)); /* aman di iPhone */
+    z-index: 4001; /* di atas header/sidebar/backdrop/toast */
+    display: inline-flex; align-items: center; gap: 10px;
+    height: 54px;
+    padding: 0 18px;
+    background: linear-gradient(90deg, #0ea5e9, #007bff);
+    color: #fff; text-decoration: none; font-weight: 800; font-size: 16px;
+    border-radius: 999px;
+    box-shadow: 0 12px 26px rgba(14,165,233,.35), 0 1px 0 rgba(255,255,255,.15) inset;
+    border: 1px solid rgba(255,255,255,.18);
+    -webkit-tap-highlight-color: transparent;
+    transition: filter .15s ease, transform .06s ease;
   }
-  .fab-cart:hover{ transform: translateY(-1px); background: var(--fab-hover); }
+  .fab-cart:hover{ filter: brightness(.98); }
+  .fab-cart:active{ transform: translateY(1px); }
+
   .fab-badge{
-    min-width:18px; height:18px; border-radius:999px; background:#fff; color:#0ea5e9; font-size:11px; font-weight:900;
-    display:inline-flex; align-items:center; justify-content:center; padding: 0 6px;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width: 22px; height: 22px; padding: 0 6px;
+    background: rgba(255,255,255,.95); color: #0ea5e9;
+    border-radius: 999px; font-size: 12px; font-weight: 900;
   }
 
-  @media (max-width: 600px){
-    .search input { width: 200px; }
-    .name { font-size:14px; }
-    .meta { font-size:12px; }
+  /* Lebih nyaman di layar kecil: tombol melebar (pill) */
+  @media (max-width: 520px){
+    .fab-cart{
+      left: 12px; right: 12px; /* melebar seperti pill */
+      justify-content: center;
+    }
+    
   }
+    document.addEventListener('DOMContentLoaded', function(){
+    document.body.classList.add('has-fab');
+  });
 </style>
 {% endblock %}
 
 {% block content %}
-<h1 class="section-title">Pilih Produk</h1>
+<h1 class="section-title">Transaksi</h1>
 
 <!-- Toolbar -->
 <div class="toolbar">
@@ -289,10 +308,22 @@
 </div>
 
 <!-- FAB Keranjang -->
+<!-- Spacer agar konten tidak ketutup tombol -->
+<div class="fab-spacer" aria-hidden="true"></div>
+
+<!-- Tombol Keranjang -->
 <a href="{{ url_for('keranjang_view') }}" class="fab-cart" aria-label="Buka keranjang">
   🧺 Keranjang
   <span id="fabBadge" class="fab-badge">{{ cart_count or 0 }}</span>
 </a>
+<script>
+  // Contoh sederhana: kalau ada global cart_count di server, badge akan mengikuti
+  (function syncBadge(){
+    const el = document.getElementById('fabBadge');
+    if(!el) return;
+    // Nilai awal sudah dari server via {{ cart_count }}, ini hanya contoh jika ingin manipulasi lain
+  })();
+</script>
 
 <!-- MODAL Tambah ke Keranjang -->
 <div id="qtyModalBackdrop" class="modal-backdrop" aria-hidden="true">

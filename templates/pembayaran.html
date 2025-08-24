@@ -5,16 +5,16 @@
 <style>
   :root{
     --card:#fff; --border:#e6e8f0; --muted:#6b7280; --text:#111827;
-    --ring: rgba(0,123,255,.25);
+    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
     --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
   }
-  .wrap { max-width: 720px; margin: 0 auto; }
+  .wrap { max-width: 800px; margin: 0 auto; }
   .card {
     background:var(--card); border:1px solid var(--border);
     border-radius:var(--radius); padding:16px; box-shadow: var(--shadow);
   }
-  .title { margin:0 0 8px; text-align:center; }
-  .sub { text-align:center; color:var(--muted); margin-bottom:12px; }
+  .title { margin:0 0 8px; text-align:left; }
+  .sub { color:var(--muted); margin-bottom:12px; }
 
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:720px){ .grid{ grid-template-columns:1fr; } }
@@ -36,16 +36,31 @@
   .row strong { font-size: 16px; }
 
   .actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top: 12px; }
+  .btn { border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; color:#fff; }
+  .btn-muted { background:#6c757d; text-decoration:none; display:inline-flex; align-items:center; }
+  .btn-muted:hover { filter: brightness(.95); }
+  .btn-primary{ background:var(--brand); }
+  .btn-primary:hover{ background:var(--brand-hover); }
 
   .help { font-size:12px; color:var(--muted); margin-top:6px; }
   .warn { color:#dc3545; margin-top: 6px; font-size: 13px; }
+
+  .hutang-box { display:none; margin-top:10px; padding:10px; border:1px dashed #cdd8f5; background:#f7faff; border-radius:10px; }
+  .hutang-box.show { display:block; }
+
+  .label-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="wrap">
   <h1 class="title">Pembayaran</h1>
-  <p class="sub">Pilih pelanggan dan masukkan nominal pembayaran untuk menyelesaikan transaksi.</p>
+  <p class="sub">Tentukan pelanggan dan nominal bayar. Centang <strong>Jadikan Hutang</strong> jika pembayaran tidak lunas penuh.</p>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -58,6 +73,7 @@
   <div class="card">
     <form method="POST" action="{{ url_for('pembayaran') }}">
       <div class="grid">
+        <!-- Kolom kiri -->
         <div>
           <div class="group">
             <label for="customer_id">Pelanggan</label>
@@ -67,47 +83,117 @@
                 <option value="{{ c.id }}">{{ c.nama }} — {{ c.email }}</option>
               {% endfor %}
             </select>
-            <div class="help">Kosongkan jika transaksi tanpa pelanggan.</div>
+            <div class="help">Kosongkan jika transaksi tanpa pelanggan. <br>Jika <strong>hutang</strong>, pelanggan wajib dipilih.</div>
           </div>
 
+          <!-- Nominal Bayar + Tombol Uang Pas -->
           <div class="group">
             <label for="bayar">Nominal Bayar (Rp)</label>
-            <input id="bayar" name="bayar" type="number" min="0" class="control" placeholder="Contoh: {{ total }}">
-            <div class="help">Masukkan uang yang diterima dari pelanggan.</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input id="bayar" name="bayar" type="number" min="0" class="control"
+                     value="{{ bayar or '' }}" placeholder="Contoh: {{ total }}" style="flex:1;">
+              <button type="button" class="btn btn-muted" id="btnUangPas" title="Isi otomatis sesuai total">
+                Uang Pas
+              </button>
+            </div>
+            <div class="help">Klik "Uang Pas" untuk mengisi otomatis sesuai total transaksi.</div>
+          </div>
+
+          <!-- Opsi Hutang -->
+          <div class="group">
+            <label class="label">Opsi Pembayaran</label>
+            <label style="display:flex; gap:8px; align-items:center;">
+              <input type="checkbox" id="is_hutang" name="is_hutang" value="1">
+              Jadikan Hutang (Outstanding)
+            </label>
+            <div id="hutangBox" class="hutang-box">
+              <div class="group">
+                <label for="jatuh_tempo">Tanggal Jatuh Tempo</label>
+                <input id="jatuh_tempo" name="jatuh_tempo" type="date" class="control">
+                <div class="help">Opsional. Disarankan untuk transaksi hutang.</div>
+              </div>
+              <div class="help">Jika "Jadikan Hutang" dicentang dan <strong>bayar kurang dari total</strong>, sisa akan dicatat sebagai hutang.</div>
+            </div>
           </div>
         </div>
 
+        <!-- Kolom kanan: Ringkasan -->
         <div>
           <div class="summary">
             <div class="row"><span>Total</span><strong id="sumTotal">Rp {{ "{:,}".format(total) }}</strong></div>
             <div class="row"><span>Bayar</span><strong id="sumBayar">Rp 0</strong></div>
-            <div class="row"><span>Kembalian</span><strong id="sumKembali">Rp 0</strong></div>
+            <div class="row" id="rowKembalian"><span>Kembalian</span><strong id="sumKembali">Rp 0</strong></div>
+            <div class="row" id="rowSisa" style="display:none;"><span>Sisa (Hutang)</span><strong id="sumSisa">Rp 0</strong></div>
           </div>
-          <div class="help">Kembalian otomatis dihitung ketika nominal bayar diisi.</div>
+          <div class="help">Kembalian atau Sisa Hutang dihitung otomatis.</div>
         </div>
       </div>
 
       <div class="actions">
         <a class="btn btn-muted" href="{{ url_for('keranjang_view') }}">← Kembali ke Keranjang</a>
-        <button class="btn btn-success" type="submit">💾 Simpan & Selesaikan</button>
+        <button class="btn btn-primary" type="submit">💾 Simpan Transaksi</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  const elBayar = document.getElementById('bayar');
-  const sumTotal = {{ total|int }};
-  const elSBayar = document.getElementById('sumBayar');
-  const elSKembali = document.getElementById('sumKembali');
+  // ====== Variabel element ======
+  const elBayar    = document.getElementById('bayar');
+  const btnUangPas = document.getElementById('btnUangPas');
+  const chkHutang  = document.getElementById('is_hutang');
+  const boxHutang  = document.getElementById('hutangBox');
 
-  function fmt(n){ try{ return 'Rp ' + (n||0).toLocaleString('id-ID'); }catch(e){ return 'Rp ' + n; } }
-  function updateSummary(){
+  const sumTotal   = {{ total|int }};
+  const elSBayar   = document.getElementById('sumBayar');
+  const elSKembali = document.getElementById('sumKembali');
+  const elSisa     = document.getElementById('sumSisa');
+  const rowKembali = document.getElementById('rowKembalian');
+  const rowSisa    = document.getElementById('rowSisa');
+
+  // ====== Helper format rupiah ======
+  function fmt(n){
+    try { return 'Rp ' + (n||0).toLocaleString('id-ID'); }
+    catch(e){ return 'Rp ' + (n||0); }
+  }
+
+  // ====== Update ringkasan UI ======
+  function updateUI(){
     const b = parseInt(elBayar.value||'0', 10) || 0;
     elSBayar.textContent = fmt(b);
-    elSKembali.textContent = fmt(b - sumTotal);
+
+    if (chkHutang.checked) {
+      // Mode hutang: tampilkan sisa (jika ada)
+      const sisa = Math.max(0, sumTotal - b);
+      elSisa.textContent = fmt(sisa);
+      rowSisa.style.display = 'flex';
+      rowKembali.style.display = 'none';
+    } else {
+      // Mode lunas: tampilkan kembalian
+      const kembalian = Math.max(0, b - sumTotal);
+      elSKembali.textContent = fmt(kembalian);
+      rowSisa.style.display = 'none';
+      rowKembali.style.display = 'flex';
+    }
   }
-  elBayar.addEventListener('input', updateSummary);
-  updateSummary();
+
+  // ====== Event listeners ======
+  elBayar.addEventListener('input', updateUI);
+  chkHutang.addEventListener('change', () => {
+    if (chkHutang.checked) boxHutang.classList.add('show');
+    else boxHutang.classList.remove('show');
+    updateUI();
+  });
+
+  // Tombol Uang Pas → isi otomatis input bayar = total
+  btnUangPas?.addEventListener('click', () => {
+    elBayar.value = String(sumTotal);
+    updateUI();
+    elBayar.focus();
+  });
+
+  // Init UI
+  updateUI();
 </script>
+
 {% endblock %}

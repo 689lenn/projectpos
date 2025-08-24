@@ -1,0 +1,147 @@
+{% set _ = namespace() %}
+<style>
+  .panel { background:#fff; border:1px solid #e6e8f0; border-radius:12px; padding:12px; box-shadow:0 8px 18px rgba(0,0,0,.06); }
+
+  .label{ font-size:12px; color:#6b7280; display:block; margin-bottom:6px; font-weight:700; }
+  .control{ width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; outline:none; background:#fff; }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px rgba(0,123,255,.25); }
+
+  .btn { border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700; color:#fff; background:#007bff; }
+  .btn:hover{ background:#0064cf; }
+  .btn-muted{ background:#6c757d; text-decoration:none; display:inline-flex; align-items:center; }
+  .btn-muted:hover{ filter: brightness(.95); }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width: 720px){ .grid-2{ grid-template-columns:1fr; } }
+  .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+
+  .cards{ display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; margin:10px 0; }
+  @media (max-width: 1200px){ .cards{ grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 720px){ .cards{ grid-template-columns: repeat(2, 1fr); } }
+
+  .card {
+    background:#fafbff; border:1px solid #e9ecf4; border-radius:12px; padding:12px;
+  }
+  .card .t{ font-size:12px; color:#6b7280; margin-bottom:4px; }
+  .card .v{ font-size:18px; font-weight:800; }
+
+  table { width:100%; border-collapse: collapse; background:#fff; }
+  th, td { border:1px solid #e6e8f0; padding:8px; text-align:left; }
+  th { background:#f6f8fb; }
+  .right{ text-align:right; }
+  .badge {
+    display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:800;
+  }
+  .badge.lunas{ background:#eafff3; color:#0a7a3b; border:1px solid #c7f0d7; }
+  .badge.hutang{ background:#fff4f4; color:#b42318; border:1px solid #ffd1d1; }
+</style>
+
+<h2>🗓️ Penjualan Periodik</h2>
+
+<div class="panel" style="margin-bottom:10px;">
+  <form method="get" action="{{ url_for('laporan_home') }}">
+    <!-- Pastikan tetap di tab 'periodik' -->
+    <input type="hidden" name="view" value="periodik">
+
+    <div class="grid-2">
+      <div>
+        <label class="label" for="start">Dari Tanggal</label>
+        <input id="start" name="start" type="date" class="control" value="{{ start }}">
+      </div>
+      <div>
+        <label class="label" for="end">Sampai Tanggal</label>
+        <input id="end" name="end" type="date" class="control" value="{{ end }}">
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label class="label" for="status">Status</label>
+      <select id="status" name="status" class="control">
+        <option value="all"   {% if status=='all' %}selected{% endif %}>Semua</option>
+        <option value="lunas" {% if status=='lunas' %}selected{% endif %}>Lunas</option>
+        <option value="hutang"{% if status=='hutang' %}selected{% endif %}>Hutang</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button class="btn" type="submit">🔎 Tampilkan</button>
+      <a class="btn btn-muted" href="{{ url_for('laporan_home', view='periodik') }}">↻ Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Ringkasan -->
+<div class="cards">
+  <div class="card">
+    <div class="t">Total Transaksi</div>
+    <div class="v">{{ total_trx }}</div>
+  </div>
+  <div class="card">
+    <div class="t">Total Penjualan</div>
+    <div class="v">Rp {{ "{:,}".format(total_penjualan) }}</div>
+  </div>
+  <div class="card">
+    <div class="t">Total Dibayar</div>
+    <div class="v">Rp {{ "{:,}".format(total_dibayar) }}</div>
+  </div>
+  <div class="card">
+    <div class="t">Total Sisa (Hutang)</div>
+    <div class="v">Rp {{ "{:,}".format(total_sisa) }}</div>
+  </div>
+  <div class="card">
+    <div class="t">Rata-rata Ticket</div>
+    <div class="v">Rp {{ "{:,}".format(avg_ticket|round|int) }}</div>
+  </div>
+</div>
+
+<div style="margin-bottom:10px; color:#6b7280;">
+  Total item terjual: <strong>{{ total_item_terjual }}</strong>
+</div>
+
+<!-- Drill-down: Daftar Transaksi -->
+<div class="panel" style="padding:0;">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:80px;">ID</th>
+        <th style="width:120px;">Tanggal</th>
+        <th>Pelanggan</th>
+        <th class="right">Total</th>
+        <th class="right">Bayar</th>
+        <th class="right">Sisa</th>
+        <th style="width:100px;">Status</th>
+        <th style="width:120px;">Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in drill_rows %}
+      <tr>
+        <td>#{{ r.id }}</td>
+        <td>{{ r.tanggal }}</td>
+        <td>{{ r.customer }}</td>
+        <td class="right">Rp {{ "{:,}".format(r.total) }}</td>
+        <td class="right">Rp {{ "{:,}".format(r.bayar) }}</td>
+        <td class="right">Rp {{ "{:,}".format(r.sisa) }}</td>
+        <td>
+          {% if r.status == 'HUTANG' %}
+            <span class="badge hutang">HUTANG</span>
+          {% else %}
+            <span class="badge lunas">LUNAS</span>
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn btn-muted" href="{{ url_for('transaksi_detail', id=r.id) }}">Lihat</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center; color:#6b7280;">Belum ada transaksi pada periode & filter ini.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:8px; color:#6b7280;">
+  * Klik <strong>Lihat</strong> untuk membuka <em>Detail Transaksi</em> (di sana ada tombol <em>Cetak</em>/<em>Share</em>).
+</div>

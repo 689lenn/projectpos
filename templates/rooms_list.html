@@ -1,25 +1,176 @@
 {% extends "base.html" %}
 {% block title %}Rooms{% endblock %}
-{% block content %}
-<h1>Daftar Rooms</h1>
-<p><a href="{{ url_for('room_new') }}">+ Room Baru</a></p>
 
-<table border="1" cellpadding="8" cellspacing="0">
-  <thead>
-    <tr><th>Kode</th><th>Status</th><th>Item</th><th>Dibuat</th><th>Aksi</th></tr>
-  </thead>
-  <tbody>
-    {% for r in rooms %}
-      <tr>
-        <td>{{ r.kode }}</td>
-        <td>{{ r.status }}</td>
-        <td>{{ summaries.get(r.id, 0) }}</td>
-        <td>{{ r.created_at }}</td>
-        <td><a href="{{ url_for('room_switch', kode=r.kode) }}">Pindah</a></td>
-      </tr>
-    {% else %}
-      <tr><td colspan="5" style="text-align:center;">Belum ada room.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% block head %}
+<style>
+  :root{
+    --card:#fff; --border:#e5e7eb; --muted:#6b7280; --txt:#111827;
+    --brand:#007bff; --brand-hover:#0064cf; --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
+    --ok:#10b981; --warn:#f59e0b; --danger:#ef4444; --chip:#f3f4f6;
+  }
+
+  .rooms-wrap{
+    display:flex; flex-direction:column; gap:12px;
+  }
+
+  /* Toolbar */
+  .toolbar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
+  }
+  .t-left{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .search{
+    position:relative;
+  }
+  .search input{
+    width:260px; max-width:86vw; padding:10px 12px 10px 36px; border:1px solid var(--border); border-radius:999px;
+    outline:none; background:#fff; transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .search input:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px rgba(0,123,255,.18); }
+  .search .icon{ position:absolute; left:10px; top:50%; transform: translateY(-50%); color:#999; }
+  .select{
+    border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:#fff;
+  }
+  .t-right .btn{ text-decoration:none; }
+
+  /* Cards grid */
+  .grid{
+    display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:12px;
+  }
+  @media (max-width: 1024px){ .grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 640px){ .grid{ grid-template-columns: 1fr; } }
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow: var(--shadow);
+    padding:12px; display:flex; gap:12px; align-items:flex-start; transition: transform .08s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .card:hover{ transform: translateY(-1px); box-shadow: 0 16px 28px rgba(0,0,0,.08); border-color:#dedede; }
+
+  .room-ico{
+    width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    background:#eef2ff; color:#4f46e5; font-size:20px; flex:0 0 auto; border:1px solid #e5e7eb;
+  }
+  .meta{
+    flex:1; min-width:0;
+  }
+  .title{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .r-code{
+    font-weight:800; letter-spacing:.3px; color:#111827; background:#f3f4f6; border:1px solid #e5e7eb; padding:4px 8px; border-radius:8px;
+  }
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 10px; font-size:12px;
+    border:1px solid #e5e7eb; background:#f9fafb; color:#555;
+  }
+  .badge .dot{ width:8px; height:8px; border-radius:50%; background:#999; }
+  .status-open .dot{ background: var(--ok); }
+  .status-closed .dot{ background: var(--danger); }
+  .items-badge .dot{ background:#3b82f6; }
+  .date{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .btn{
+    border:none; border-radius:10px; padding:8px 12px; cursor:pointer; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-primary{ background: var(--brand); }
+  .btn-primary:hover{ background: var(--brand-hover); }
+  .btn-muted{ background:#6b7280; }
+  .btn-muted:hover{ filter: brightness(.95); }
+  .btn-ghost{
+    background:#fff; color:#374151; border:1px solid var(--border);
+  }
+  .btn-ghost:hover{ background:#f9fafb; }
+
+  /* Empty state */
+  .empty{
+    background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; color:#6b7280;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rooms-wrap">
+  <div class="toolbar">
+    <div class="t-left">
+      <div class="search">
+        <span class="icon">🔎</span>
+        <input type="text" id="q" placeholder="Cari kode room..." />
+      </div>
+      <div class="select">
+        <select id="statusFilter">
+          <option value="">Semua Status</option>
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+    </div>
+    <div class="t-right">
+      <a href="{{ url_for('room_new') }}" class="btn btn-primary">➕ Room Baru</a>
+    </div>
+  </div>
+
+  {% if rooms and rooms|length > 0 %}
+    <div id="roomsGrid" class="grid">
+      {% for r in rooms %}
+        {% set total_item = summaries.get(r.id, 0) %}
+        <div class="card" data-code="{{ r.kode|lower }}" data-status="{{ r.status }}">
+          <div class="room-ico">🗂️</div>
+
+          <div class="meta">
+            <div class="title">
+              <span class="r-code">{{ r.kode }}</span>
+              <span class="badge status-{{ r.status }}">
+                <span class="dot"></span>
+                {{ r.status|upper }}
+              </span>
+              <span class="badge items-badge">
+                <span class="dot"></span>
+                {{ total_item }} item
+              </span>
+            </div>
+
+            <div class="date">Dibuat: {{ r.created_at }}</div>
+          </div>
+
+          <div class="actions">
+            {% if r.status == 'open' %}
+              <a class="btn btn-primary" href="{{ url_for('room_switch', kode=r.kode) }}" title="Pindah ke room ini">➡️ Pindah</a>
+            {% else %}
+              <button class="btn btn-muted" type="button" disabled>✔️ Selesai</button>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      Belum ada room. 
+    </div>
+  {% endif %}
+</div>
+
+<script>
+  // Filter by search & status (client-side)
+  (function(){
+    const q = document.getElementById('q');
+    const statusSel = document.getElementById('statusFilter');
+    const grid = document.getElementById('roomsGrid');
+
+    function applyFilter(){
+      if(!grid) return;
+      const cards = Array.from(grid.children);
+      const text = (q?.value || '').toLowerCase().trim();
+      const st = statusSel?.value || '';
+
+      cards.forEach(card => {
+        const code = card.getAttribute('data-code') || '';
+        const status = card.getAttribute('data-status') || '';
+        const matchQ = !text || code.includes(text);
+        const matchSt = !st || (status === st);
+        card.style.display = (matchQ && matchSt) ? 'flex' : 'none';
+      });
+    }
+
+    q?.addEventListener('input', applyFilter);
+    statusSel?.addEventListener('change', applyFilter);
+  })();
+</script>
 {% endblock %}

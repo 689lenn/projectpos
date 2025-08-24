@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Laporan Penjualan{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --card:#fff; --border:#e6e8f0; --muted:#6b7280;
+    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
+    --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
+    --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444;
+  }
+  .wrap { display:grid; grid-template-columns: 280px 1fr; gap:16px; }
+  @media (max-width: 992px){ .wrap{ grid-template-columns:1fr; } }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
+  .card h3 { margin:0; padding:12px 14px; border-bottom:1px solid var(--border); }
+  .card-body { padding: 14px; }
+
+  .control{
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:10px; font-size:14px; outline:none; background:#fff;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
+  label{ display:block; font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600; }
+
+  .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  @media (max-width: 480px){ .grid-2{ grid-template-columns: 1fr; } }
+
+  .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 10px; }
+  .btn{ border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; color:#fff; background:var(--brand); }
+  .btn:hover{ background:var(--brand-hover); }
+
+  .summary { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom: 14px; }
+  @media (max-width: 720px){ .summary{ grid-template-columns: 1fr; } }
+  .sum-card { border:1px solid var(--border); border-radius:12px; padding:12px; background:#fafbff; }
+  .sum-title { font-size:12px; color:var(--muted); }
+  .sum-val { font-size:18px; font-weight:800; }
+
+  table { width:100%; border-collapse:collapse; }
+  th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
+  th { background:#f9fafb; border-top:1px solid #eee; }
+  .right { text-align:right; }
+  .badge { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:800; }
+  .badge.lunas { background:#e7f8ed; color:#0a7a2d; }
+  .badge.hutang { background:#fff4e5; color:#a16207; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Laporan Penjualan</h1>
+<p class="sub" style="color:#6b7280;">Filter periode, customer, dan status. Hasil rekap akan tampil bersama daftar transaksi yang termasuk, lengkap dengan link ke detail.</p>
+
+<div class="wrap">
+  <!-- Sidebar Filter -->
+  <div class="card">
+    <h3>Filter</h3>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('laporan_penjualan') }}">
+        <div class="grid-2">
+          <div>
+            <label for="start">Tanggal Mulai</label>
+            <input id="start" name="start" type="date" class="control" value="{{ filters.start }}">
+          </div>
+          <div>
+            <label for="end">Tanggal Selesai</label>
+            <input id="end" name="end" type="date" class="control" value="{{ filters.end }}">
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label for="customer_id">Pelanggan</label>
+          <select id="customer_id" name="customer_id" class="control">
+            <option value="">(Semua)</option>
+            {% for c in customers %}
+              <option value="{{ c.id }}" {% if filters.customer_id == c.id|string %}selected{% endif %}>
+                {{ c.nama }} — {{ c.email }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label for="status">Status</label>
+          <select id="status" name="status" class="control">
+            <option value="all"   {% if filters.status == 'all' %}selected{% endif %}>Semua</option>
+            <option value="lunas" {% if filters.status == 'lunas' %}selected{% endif %}>Lunas</option>
+            <option value="hutang"{% if filters.status == 'hutang' %}selected{% endif %}>Hutang</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn">Terapkan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Panel Hasil -->
+  <div>
+    <!-- Ringkasan -->
+    <div class="summary">
+      <div class="sum-card">
+        <div class="sum-title">Total Nominal</div>
+        <div class="sum-val">Rp {{ "{:,}".format(total_nominal or 0) }}</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-title">Total Lunas</div>
+        <div class="sum-val">Rp {{ "{:,}".format(total_lunas or 0) }}</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-title">Total Hutang</div>
+        <div class="sum-val">Rp {{ "{:,}".format(total_hutang or 0) }}</div>
+      </div>
+    </div>
+
+    <!-- Daftar Transaksi Terdampak -->
+    <div class="card">
+      <h3>Transaksi Terdampak</h3>
+      <div class="card-body">
+        {% if transaksi_list %}
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Tanggal</th>
+                <th>Pelanggan</th>
+                <th class="right">Item</th>
+                <th class="right">Total</th>
+                <th class="right">Bayar</th>
+                <th class="right">Kembalian</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in transaksi_list %}
+                {% set count_item = items_count_map.get(t.id, 0) %}
+                {% set is_lunas = (t.bayar or 0) >= (t.total or 0) %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ t.tanggal|default('-') }}</td>
+                <td>{{ t.customer.nama if t.customer else '-' }}</td>
+                <td class="right">{{ count_item }}</td>
+                <td class="right">Rp {{ "{:,}".format(t.total or 0) }}</td>
+                <td class="right">Rp {{ "{:,}".format(t.bayar or 0) }}</td>
+                <td class="right">Rp {{ "{:,}".format(t.kembalian or 0) }}</td>
+                <td>
+                  {% if is_lunas %}
+                    <span class="badge lunas">LUNAS</span>
+                  {% else %}
+                    <span class="badge hutang">HUTANG</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ url_for('transaksi_detail', id=t.id) }}" class="btn" style="padding:6px 10px;">Detail</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p style="color:#6b7280; margin:0;">Tidak ada transaksi untuk filter ini.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

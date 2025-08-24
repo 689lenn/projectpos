@@ -5,6 +5,40 @@
   <title>{% block title %}POS App{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    /* ===== Floating Cart Button (Bottom Full Width) ===== */
+.fab-cart{
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 14px 16px;
+  background: var(--brand);
+  color: #fff; text-decoration: none; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border: none; outline: none;
+  border-top-left-radius: 12px; border-top-right-radius: 12px;
+  box-shadow: 0 -6px 18px rgba(0,0,0,.12);
+  z-index: 950;
+}
+
+/* Badge di tombol */
+.fab-badge{
+  background: var(--badge-bg);
+  color: var(--badge-txt);
+  min-width: 22px; height: 22px; padding: 0 8px;
+  border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+}
+
+/* Efek hover/klik (tidak geser-geser) */
+.fab-cart{
+  transition: transform .15s ease, filter .2s ease, box-shadow .2s ease;
+}
+.fab-cart:hover{
+  filter: brightness(1.05);
+  box-shadow: 0 -8px 24px rgba(0,0,0,.16);
+  transform: scale(1.02);        /* sedikit zoom */
+}
+.fab-cart:active{
+  transform: scale(0.98);        /* efek klik halus */
+}
     :root{
       /* Warna & tema */
       --brand: #007bff;
@@ -29,8 +63,8 @@
       --z-header: 1000;
 
       /* Layering */
-      --z-sidebar: 900;
-      --z-backdrop: 850;
+      --z-sidebar: 5000;   /* naikkan agar di atas FAB */
+      --z-backdrop: 4800;  /* backdrop di bawah sidebar, di atas FAB */
 
       /* Button & badge */
       --btn-radius: 10px;
@@ -118,13 +152,22 @@
     }
     .dropdown a:hover { background:#2c3035; }
 
-    /* Backdrop saat sidebar tampil (mobile) */
-    .backdrop {
-      position: fixed; inset: var(--header-h) 0 0 0; /* mulai di bawah header */
-      background: rgba(0,0,0,.35);
-      z-index: var(--z-backdrop); display:none; opacity:0; transition: opacity .2s ease;
-    }
-    .backdrop.show { display:block; opacity:1; }
+    /* Backdrop saat sidebar tampil: full screen + blur */
+.backdrop{
+  position: fixed;
+  inset: 0;                         /* tutup seluruh layar */
+  background: rgba(15,23,42,.35);   /* gelap transparan */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px); /* Safari/iOS */
+  z-index: var(--z-backdrop);
+  display: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.backdrop.show{
+  display: block;
+  opacity: 1;
+}
 
     .badge{
       display:inline-flex; align-items:center; justify-content:center;
@@ -204,29 +247,24 @@
     <!-- Transaksi -->
     <div class="side-group">
       <div class="side-title">Transaksi</div>
-      <a class="side-link {{ 'active' if ep == 'index' else '' }}" href="{{ url_for('index') }}">🛒 Pilih Produk</a>
-      <a class="side-link {{ 'active' if ep == 'keranjang_view' else '' }}" href="{{ url_for('keranjang_view') }}">
-        🧺 Keranjang
-        {% if cart_count and cart_count > 0 %}
-          <span class="badge">{{ cart_count }}</span>
-        {% endif %}
-      </a>
+      <a class="side-link {{ 'active' if ep == 'index' else '' }}" href="{{ url_for('index') }}">🛒 Transaksi</a>
     </div>
 
     <!-- Laporan -->
-    <div class="side-group">
-      <div class="side-title">Laporan</div>
-      <a class="side-link {{ 'active' if ep == 'transaksi_list' else '' }}" href="{{ url_for('transaksi_list') }}">📃 Daftar Transaksi</a>
-    </div>
-
+     <!-- Laporan -->
+<div class="side-group">
+  <div class="side-title">Laporan</div>
+  <a class="side-link {{ 'active' if ep == 'transaksi_list' else '' }}" href="{{ url_for('transaksi_list') }}">📃 Daftar Transaksi</a>
+  <a class="side-link {{ 'active' if ep == 'laporan_home' else '' }}" href="{{ url_for('laporan_home') }}">📊 Laporan & Analitik</a>
+</div>
+   
     <!-- Rooms -->
-    <div class="side-group">
+    <!-- <div class="side-group">
       <div class="side-title">Rooms</div>
       <a class="side-link {{ 'active' if ep == 'rooms_list' else '' }}" href="{{ url_for('rooms_list') }}">🗂️ Rooms</a>
-      <a class="side-link" href="{{ url_for('room_new') }}">➕ Buat Room</a>
-    </div>
+    </div> -->
   </aside>
-
+  
   <!-- Main content -->
   <main class="main" id="mainContent">
     <!-- Flash -->
@@ -330,6 +368,8 @@
       if(st === '1') openDrop();
     } catch(e){}
   })();
+
+  
 </script>
 
 {% block scripts %}{% endblock %}
