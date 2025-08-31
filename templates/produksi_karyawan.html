@@ -1,93 +1,333 @@
 {% extends "base.html" %}
 {% block title %}Produksi Karyawan{% endblock %}
+
+{% block head %}
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --border:#e6e8f0;
+    --primary:#2563eb;
+    --primary-600:#1d4ed8;
+    --success:#10b981;
+    --danger:#ef4444;
+    --chip:#eef2ff;
+  }
+  .wrap{max-width: 1080px; margin: 0 auto;}
+  .page-title{font-size: 22px; font-weight: 800; margin: 6px 0 14px;}
+  .desc{font-size: 13px; color:var(--muted); margin-bottom:16px;}
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px;
+    box-shadow: 0 1px 0 rgba(20,20,20,0.03);
+  }
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .card-title{font-weight:800;}
+
+  /* Form controls */
+  label{display:block; font-size:13px; font-weight:700; color:var(--muted); margin-bottom:6px;}
+  .control{
+    width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none;
+    background:#fff;
+  }
+  .control:focus{border-color:#cfe3ff; box-shadow:0 0 0 4px rgba(37,99,235,.12);}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width: 760px){ .grid{grid-template-columns:1fr;} }
+
+  .hint{font-size:12px; color:var(--muted); margin-top:6px;}
+  .toggle-row{display:flex; gap:10px; align-items:center; margin:10px 0;}
+  .toggle-row small{color:var(--muted);}
+
+  .actions{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:10px;}
+  .btn{border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer; color:#fff;}
+  .btn-primary{background:var(--primary);}
+  .btn-primary:hover{background:var(--primary-600);}
+  .btn-muted{background:#9ca3af;}
+  .btn-success{background:var(--success);}
+  .btn-danger{background:var(--danger);}
+
+  /* Ringkasan kalkulasi */
+  .summary{
+    display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-top:12px;
+  }
+  @media (max-width: 760px){ .summary{grid-template-columns:1fr 1fr;} }
+  .sum-item{
+    background:#fafafa; border:1px dashed var(--border); border-radius:12px; padding:10px;
+  }
+  .sum-item .label{font-size:12px; color:var(--muted);}
+  .sum-item .value{font-size:16px; font-weight:800; margin-top:2px;}
+
+  /* Filter chips */
+  .chipbar{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0;}
+  .chip{
+    background:var(--chip); color:#1e40af; border:1px solid #c7d2fe; border-radius:999px; padding:6px 10px; font-size:12px;
+    cursor:pointer; user-select:none;
+  }
+  .chip:hover{background:#e0e7ff;}
+
+  /* Table */
+  .table-wrap{overflow:auto; border:1px solid var(--border); border-radius:12px;}
+  table{width:100%; border-collapse:collapse; min-width: 860px;}
+  thead th{
+    position:sticky; top:0; background:#f9fafb; border-bottom:1px solid var(--border); padding:10px; text-align:left; font-size:12px; color:var(--muted); z-index:1;
+  }
+  tbody td{border-bottom:1px solid #f1f3f6; padding:10px; font-size:14px;}
+  tbody tr:nth-child(odd){background:#fff;}
+  tbody tr:nth-child(even){background:#fcfdff;}
+  tfoot th, tfoot td{background:#f8fafc; border-top:1px solid var(--border); padding:10px;}
+
+  .right{text-align:right;}
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Produksi Karyawan (Harian)</h1>
+<div class="wrap">
+  <div class="page-title">Produksi Karyawan (Harian)</div>
+  <div class="desc">Catat pekerjaan harian karyawan, optional update stok untuk produk manufaktur, dan pantau total upah periode mingguan.</div>
 
-<div class="card" style="margin-bottom:14px;">
-  <form method="post">
-    <div class="grid">
-      <div>
-        <label>Tanggal</label>
-        <input class="control" type="date" name="tanggal" value="{{ request.args.get('tanggal') or start }}">
-        <label style="margin-top:10px;">Karyawan</label>
-        <select class="control" name="karyawan_id" required>
-          <option value="">- Pilih Karyawan -</option>
-          {% for k in karyawan_all %}
-          <option value="{{ k.id }}">{{ k.nama }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label>Pekerjaan</label>
-        <select class="control" name="pekerjaan_id" required>
-          <option value="">- Pilih Pekerjaan -</option>
-          {% for p in pekerjaan_all %}
-          <option value="{{ p.id }}">{{ p.nama }} ({{ p.unit_label }}, rate {{ rupiah(p.rate_per_unit) }})</option>
-          {% endfor %}
-        </select>
-
-        <label style="margin-top:10px;">Jumlah</label>
-        <input class="control" type="number" name="qty" min="1" value="1" required>
-      </div>
+  <!-- ===== FORM ENTRY ===== -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Entry Pekerjaan Hari Ini</div>
     </div>
 
-    <div class="grid" style="margin-top:10px;">
-      <div>
-        <label>Override Rate (opsional, Rp)</label>
-        <input class="control" type="number" name="rate_override" min="0" placeholder="Kosongkan untuk pakai rate default">
-      </div>
-      <div>
-        <label>Catatan (opsional)</label>
-        <input class="control" name="catatan" placeholder="mis: shift pagi">
-      </div>
-    </div>
+    <form method="post">
+      <div class="grid">
+        <div>
+          <label>Tanggal</label>
+          <input class="control" type="date" name="tanggal" value="{{ request.args.get('tanggal') or start }}">
 
-    <div class="toggle-row" style="margin-top:10px;">
-      <input type="checkbox" id="apply_to_stock" name="apply_to_stock" value="1">
-      <label for="apply_to_stock" style="margin:0;">Juga update stok (jika pekerjaan terkait Produk manufaktur)</label>
-    </div>
+          <label style="margin-top:10px;">Karyawan</label>
+          <select class="control" name="karyawan_id" required id="f_karyawan">
+            <option value="">- Pilih Karyawan -</option>
+            {% for k in karyawan_all %}
+            <option value="{{ k.id }}">{{ k.nama }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-    <div class="actions">
-      <button class="btn btn-primary" type="submit">Simpan Entry</button>
-    </div>
-  </form>
-</div>
+        <div>
+          <label>Pekerjaan</label>
+          <select class="control" name="pekerjaan_id" required id="f_pekerjaan">
+            <option value="">- Pilih Pekerjaan -</option>
+            {% for p in pekerjaan_all %}
+            <option value="{{ p.id }}"
+                    data-rate="{{ p.rate_per_unit }}"
+                    data-unit="{{ p.unit_label|e }}">
+              {{ p.nama }} ({{ p.unit_label }}, rate {{ rupiah(p.rate_per_unit) }})
+            </option>
+            {% endfor %}
+          </select>
 
-<div class="card">
-  <form method="get" style="margin-bottom:10px;">
-    <div class="grid">
-      <div>
-        <label>Periode (Mingguan)</label>
-        <div style="display:flex; gap:8px;">
-          <input class="control" type="date" name="start" value="{{ start }}">
-          <input class="control" type="date" name="end" value="{{ end }}">
+          <label style="margin-top:10px;">Jumlah</label>
+          <input class="control" type="number" name="qty" id="f_qty" min="1" value="1" required>
         </div>
       </div>
-      <div style="display:flex; align-items:end;">
-        <button class="btn btn-primary" type="submit">Filter</button>
-      </div>
-    </div>
-  </form>
 
-  <table style="width:100%; border-collapse:collapse;">
-    <thead>
-      <tr><th>Tanggal</th><th>Karyawan</th><th>Pekerjaan</th><th>Qty</th><th>Rate</th><th>Total</th><th>Catatan</th></tr>
-    </thead>
-    <tbody>
-      {% for r in rows %}
-      <tr>
-        <td>{{ r.tanggal }}</td>
-        <td>{{ r.karyawan.nama if r.karyawan else '-' }}</td>
-        <td>{{ r.pekerjaan.nama if r.pekerjaan else '-' }}</td>
-        <td>{{ r.qty }}</td>
-        <td>{{ rupiah(r.rate_snapshot) }}</td>
-        <td>{{ rupiah(r.total_upah) }}</td>
-        <td>{{ r.catatan or '-' }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="7">Belum ada entry pada periode ini.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      <div class="grid" style="margin-top:10px;">
+        <div>
+          <label>Override Rate (opsional, Rp)</label>
+          <input class="control" type="number" name="rate_override" id="f_rate_override" min="0" placeholder="Kosongkan untuk pakai rate default">
+          <div class="hint">Jika diisi, sistem akan pakai nilai ini sebagai rate terpakai.</div>
+        </div>
+        <div>
+          <label>Catatan (opsional)</label>
+          <input class="control" name="catatan" id="f_catatan" placeholder="mis: shift pagi">
+        </div>
+      </div>
+
+      <div class="toggle-row" style="margin-top:10px;">
+        <input type="checkbox" id="apply_to_stock" name="apply_to_stock" value="1">
+        <label for="apply_to_stock" style="margin:0; cursor:pointer;">Juga update stok (jika pekerjaan terkait Produk manufaktur)</label>
+        <small title="Jika Pekerjaan terhubung ke Produk manufaktur dan opsi ini diaktifkan, stok bahan akan berkurang & stok produk jadi bertambah sesuai resep.">ℹ️</small>
+      </div>
+
+      <!-- RINGKASAN KALKULASI (LIVE) -->
+      <div class="summary" id="sumBox">
+        <div class="sum-item">
+          <div class="label">Rate Default</div>
+          <div class="value" id="sum_rate_default">Rp 0</div>
+        </div>
+        <div class="sum-item">
+          <div class="label">Rate Terpakai</div>
+          <div class="value" id="sum_rate_used">Rp 0</div>
+        </div>
+        <div class="sum-item">
+          <div class="label">Qty</div>
+          <div class="value" id="sum_qty">1</div>
+        </div>
+        <div class="sum-item">
+          <div class="label">Perkiraan Upah</div>
+          <div class="value" id="sum_total_upah">Rp 0</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-muted" type="reset" id="btnReset">Reset</button>
+        <button class="btn btn-primary" type="submit">Simpan Entry</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== FILTER & TABEL ===== -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Rekap Periode</div>
+    </div>
+
+    <!-- Filter range -->
+    <form method="get" style="margin-bottom:10px;" id="filterForm">
+      <div class="grid">
+        <div>
+          <label>Periode (Mingguan)</label>
+          <div style="display:flex; gap:8px;">
+            <input class="control" type="date" name="start" id="f_start" value="{{ start }}">
+            <input class="control" type="date" name="end" id="f_end" value="{{ end }}">
+          </div>
+          <div class="chipbar">
+            <div class="chip" onclick="setRange('this_week')">Minggu ini</div>
+            <div class="chip" onclick="setRange('last_week')">Minggu lalu</div>
+            <div class="chip" onclick="setRange('this_month')">Bulan ini</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:end; gap:10px;">
+          <button class="btn btn-primary" type="submit">Filter</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Tabel -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Karyawan</th>
+          <th>Pekerjaan</th>
+          <th class="right">Qty</th>
+          <th class="right">Rate</th>
+          <th class="right">Total</th>
+          <th>Catatan</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% set sum_qty = 0 %}
+        {% set sum_total = 0 %}
+        {% for r in rows %}
+          {% set sum_qty = sum_qty + (r.qty or 0) %}
+          {% set sum_total = sum_total + (r.total_upah or 0) %}
+          <tr>
+            <td>{{ r.tanggal }}</td>
+            <td>{{ r.karyawan.nama if r.karyawan else '-' }}</td>
+            <td>
+              {{ r.pekerjaan.nama if r.pekerjaan else '-' }}
+              {% if r.pekerjaan and r.pekerjaan.unit_label %}
+                <div class="hint">{{ r.pekerjaan.unit_label }}</div>
+              {% endif %}
+            </td>
+            <td class="right">{{ r.qty }}</td>
+            <td class="right">{{ rupiah(r.rate_snapshot) }}</td>
+            <td class="right">{{ rupiah(r.total_upah) }}</td>
+            <td>{{ r.catatan or '-' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" style="text-align:center; padding:20px;">Belum ada entry pada periode ini.</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="3" class="right">TOTAL</th>
+            <th class="right">{{ sum_qty }}</th>
+            <th></th>
+            <th class="right">{{ rupiah(sum_total) }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
 </div>
+
+<script>
+  // ========= Helpers =========
+  function fmtIDR(n){
+    try{ return 'Rp ' + (parseInt(n)||0).toLocaleString('id-ID'); }
+    catch(e){ return 'Rp ' + n; }
+  }
+
+  // ========= Live kalkulasi upah =========
+  const selPekerjaan = document.getElementById('f_pekerjaan');
+  const inpQty = document.getElementById('f_qty');
+  const inpOverride = document.getElementById('f_rate_override');
+
+  const elRateDefault = document.getElementById('sum_rate_default');
+  const elRateUsed    = document.getElementById('sum_rate_used');
+  const elQty         = document.getElementById('sum_qty');
+  const elTotalUpah   = document.getElementById('sum_total_upah');
+
+  function recalcSummary(){
+    const opt = selPekerjaan.options[selPekerjaan.selectedIndex];
+    let defaultRate = 0;
+    if(opt && opt.dataset && opt.dataset.rate){
+      defaultRate = parseInt(opt.dataset.rate, 10) || 0;
+    }
+    let qty = parseInt(inpQty.value, 10) || 0;
+    let overrideRate = parseInt(inpOverride.value, 10) || 0;
+
+    const usedRate = (overrideRate > 0 ? overrideRate : defaultRate);
+    const totalUpah = usedRate * qty;
+
+    elRateDefault.textContent = fmtIDR(defaultRate);
+    elRateUsed.textContent    = fmtIDR(usedRate);
+    elQty.textContent         = qty.toString();
+    elTotalUpah.textContent   = fmtIDR(totalUpah);
+  }
+
+  selPekerjaan.addEventListener('change', recalcSummary);
+  inpQty.addEventListener('input', recalcSummary);
+  inpOverride.addEventListener('input', recalcSummary);
+  document.getElementById('btnReset').addEventListener('click', () => {
+    setTimeout(recalcSummary, 30);
+  });
+
+  // init pertama
+  recalcSummary();
+
+  // ========= Quick period chips =========
+  function toISO(d){ return d.toISOString().slice(0,10); }
+  function setRange(mode){
+    const fStart = document.getElementById('f_start');
+    const fEnd = document.getElementById('f_end');
+    const today = new Date();
+    let start, end;
+
+    if(mode === 'this_week'){
+      // Minggu ini (Senin - Sabtu, sesuai keterangan Anda)
+      const day = today.getDay(); // 0=Minggu
+      const offsetToMonday = (day === 0 ? 6 : day - 1); // jarak dari Senin
+      start = new Date(today);
+      start.setDate(today.getDate() - offsetToMonday);
+      end = new Date(start);
+      end.setDate(start.getDate() + 5); // Senin..Sabtu
+    }else if(mode === 'last_week'){
+      const day = today.getDay();
+      const offsetToMonday = (day === 0 ? 6 : day - 1);
+      const thisMon = new Date(today);
+      thisMon.setDate(today.getDate() - offsetToMonday);
+      // minggu lalu = thisMon - 7.. thisMon - 2
+      start = new Date(thisMon);
+      start.setDate(thisMon.getDate() - 7);
+      end = new Date(start);
+      end.setDate(start.getDate() + 5);
+    }else if(mode === 'this_month'){
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end   = new Date(today.getFullYear(), today.getMonth()+1, 0);
+    }else{
+      return;
+    }
+    fStart.value = toISO(start);
+    fEnd.value   = toISO(end);
+  }
+</script>
 {% endblock %}
