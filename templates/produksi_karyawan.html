@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Produksi Karyawan{% endblock %}
+{% block content %}
+<h1>Produksi Karyawan (Harian)</h1>
+
+<div class="card" style="margin-bottom:14px;">
+  <form method="post">
+    <div class="grid">
+      <div>
+        <label>Tanggal</label>
+        <input class="control" type="date" name="tanggal" value="{{ request.args.get('tanggal') or start }}">
+        <label style="margin-top:10px;">Karyawan</label>
+        <select class="control" name="karyawan_id" required>
+          <option value="">- Pilih Karyawan -</option>
+          {% for k in karyawan_all %}
+          <option value="{{ k.id }}">{{ k.nama }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Pekerjaan</label>
+        <select class="control" name="pekerjaan_id" required>
+          <option value="">- Pilih Pekerjaan -</option>
+          {% for p in pekerjaan_all %}
+          <option value="{{ p.id }}">{{ p.nama }} ({{ p.unit_label }}, rate {{ rupiah(p.rate_per_unit) }})</option>
+          {% endfor %}
+        </select>
+
+        <label style="margin-top:10px;">Jumlah</label>
+        <input class="control" type="number" name="qty" min="1" value="1" required>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:10px;">
+      <div>
+        <label>Override Rate (opsional, Rp)</label>
+        <input class="control" type="number" name="rate_override" min="0" placeholder="Kosongkan untuk pakai rate default">
+      </div>
+      <div>
+        <label>Catatan (opsional)</label>
+        <input class="control" name="catatan" placeholder="mis: shift pagi">
+      </div>
+    </div>
+
+    <div class="toggle-row" style="margin-top:10px;">
+      <input type="checkbox" id="apply_to_stock" name="apply_to_stock" value="1">
+      <label for="apply_to_stock" style="margin:0;">Juga update stok (jika pekerjaan terkait Produk manufaktur)</label>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Simpan Entry</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <form method="get" style="margin-bottom:10px;">
+    <div class="grid">
+      <div>
+        <label>Periode (Mingguan)</label>
+        <div style="display:flex; gap:8px;">
+          <input class="control" type="date" name="start" value="{{ start }}">
+          <input class="control" type="date" name="end" value="{{ end }}">
+        </div>
+      </div>
+      <div style="display:flex; align-items:end;">
+        <button class="btn btn-primary" type="submit">Filter</button>
+      </div>
+    </div>
+  </form>
+
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr><th>Tanggal</th><th>Karyawan</th><th>Pekerjaan</th><th>Qty</th><th>Rate</th><th>Total</th><th>Catatan</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.tanggal }}</td>
+        <td>{{ r.karyawan.nama if r.karyawan else '-' }}</td>
+        <td>{{ r.pekerjaan.nama if r.pekerjaan else '-' }}</td>
+        <td>{{ r.qty }}</td>
+        <td>{{ rupiah(r.rate_snapshot) }}</td>
+        <td>{{ rupiah(r.total_upah) }}</td>
+        <td>{{ r.catatan or '-' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">Belum ada entry pada periode ini.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

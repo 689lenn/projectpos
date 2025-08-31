@@ -158,6 +158,48 @@ class StockMutasi(db.Model):
 
     produk = db.relationship('Produk')
 
+# ==================== KARYAWAN & PRODUKSI ====================
+
+class Karyawan(db.Model):
+    __tablename__ = 'karyawan'
+    id      = db.Column(db.Integer, primary_key=True)
+    nama    = db.Column(db.String(100), nullable=False)
+    no_hp   = db.Column(db.String(30), nullable=True)
+    alamat  = db.Column(db.String(200), nullable=True)
+    aktif   = db.Column(db.Boolean, nullable=False, default=True)
+
+    produksi = db.relationship('ProduksiKaryawan', back_populates='karyawan', cascade='all, delete')
+
+class Pekerjaan(db.Model):
+    __tablename__ = 'pekerjaan'
+    id           = db.Column(db.Integer, primary_key=True)
+    nama         = db.Column(db.String(120), nullable=False, unique=True)   # "Isi Bantal", "Jahit Sarung"
+    unit_label   = db.Column(db.String(30), nullable=False, default='pcs')  # pcs, kg, meter, dst.
+    rate_per_unit= db.Column(db.Integer, nullable=False, default=0)         # upah per unit (snapshot default)
+
+    # Opsional: jika pekerjaan ini berhubungan dengan produk manufaktur
+    produk_id    = db.Column(db.Integer, db.ForeignKey('produk.id'), nullable=True)
+    produk       = db.relationship('Produk')
+
+    produksi     = db.relationship('ProduksiKaryawan', back_populates='pekerjaan', cascade='all, delete')
+
+class ProduksiKaryawan(db.Model):
+    __tablename__ = 'produksi_karyawan'
+    id               = db.Column(db.Integer, primary_key=True)
+    tanggal          = db.Column(db.String(20), nullable=False)  # 'YYYY-MM-DD'
+    karyawan_id      = db.Column(db.Integer, db.ForeignKey('karyawan.id'), nullable=False)
+    pekerjaan_id     = db.Column(db.Integer, db.ForeignKey('pekerjaan.id'), nullable=False)
+    qty              = db.Column(db.Integer, nullable=False, default=0)
+    rate_snapshot    = db.Column(db.Integer, nullable=False, default=0)     # rate saat entry disimpan
+    total_upah       = db.Column(db.Integer, nullable=False, default=0)
+    catatan          = db.Column(db.String(200), nullable=True)
+
+    # apakah saat simpan kita juga mengerjakan produksi stok produk (jika pekerjaan terkait produk manufaktur)
+    apply_to_stock   = db.Column(db.Boolean, nullable=False, default=False)
+
+    karyawan = db.relationship('Karyawan', back_populates='produksi')
+    pekerjaan= db.relationship('Pekerjaan', back_populates='produksi')    
+
 # ========== MIGRASI RINGAN ==========
 with app.app_context():
     db.create_all()
@@ -543,30 +585,88 @@ def tambah_keranjang():
     flash(f"{p.nama} x{qty} ditambahkan ke keranjang.", "success")
     return redirect(url_for("index"))
 
+def to_int_safely(val, default=0):
+    """Konversi aman ke int dari berbagai input."""
+    try:
+        if val is None:
+            return default
+        if isinstance(val, int):
+            return val
+        # jika string "12.000" atau "12,000"
+        s = str(val).strip()
+        if s == "":
+            return default
+        # hilangkan pemisah ribuan umum
+        s = s.replace(".", "").replace(",", "")
+        return int(s)
+    except Exception:
+        try:
+            return int(float(val))
+        except Exception:
+            return default
+
 @app.route("/keranjang", endpoint="keranjang_view")
 def keranjang_view():
     cart = get_cart_dict_for_template()
     room = get_current_room()
 
+    # Kalau mode session (bukan room), tambahkan info stok terbaru untuk ditampilkan
     if not room:
         for pid, item in cart.items():
             p = Produk.query.get(int(pid))
             item["stok"] = p.stok if p else 0
 
+    # Map HPP per produk (key = string pid agar match dengan cart)
     produk_hpp = {}
     for pid, item in cart.items():
-        p = Produk.query.get(int(pid))
-        produk_hpp[pid] = p.hpp if p and p.hpp is not None else 0
+        try:
+            p = Produk.query.get(int(pid))
+            produk_hpp[pid] = int(p.hpp or 0) if p else 0
+        except:
+            produk_hpp[pid] = 0
 
-    total = sum(item["harga"] * item["jumlah"] for item in cart.values())
-    pot_profit = sum((item["harga"] - produk_hpp.get(pid, 0)) * item["jumlah"] for pid, item in cart.items())
+    # Helper aman: ubah harga ke int meskipun inputnya string dgn titik/koma
+    def as_int(x):
+        try:
+            if isinstance(x, (int, float)):
+                return int(x)
+            s = str(x).strip().replace('.', '').replace(',', '')
+            return int(s) if s else 0
+        except:
+            return 0
+
+    total = 0
+    pot_profit = 0
+    profit_rows = []  # opsional untuk tampilan rinci
+
+    for pid, item in cart.items():
+        harga = as_int(item.get("harga", 0))
+        qty   = as_int(item.get("jumlah", 0))
+        hpp   = as_int(produk_hpp.get(pid, 0))
+
+        line_total       = harga * qty
+        line_pot_untung  = max(0, (harga - hpp)) * qty  # jika ingin bisa minus, hilangkan max(0, ...)
+
+        total      += line_total
+        pot_profit += line_pot_untung
+
+        profit_rows.append({
+            "pid": pid,
+            "nama": item.get("nama"),
+            "harga": harga,
+            "hpp": hpp,
+            "qty": qty,
+            "profit_per_item": max(0, (harga - hpp)),  # atau (harga - hpp) kalau ingin bisa minus
+            "line_profit": line_pot_untung
+        })
 
     return render_template(
         "keranjang.html",
         keranjang=cart,
         total=total,
         produk_hpp=produk_hpp,
-        pot_profit=pot_profit
+        pot_profit=pot_profit,
+        profit_rows=profit_rows  # opsional, kalau mau ditampilkan per baris
     )
 
 @app.route("/keranjang/update", methods=["POST"])
@@ -1258,7 +1358,275 @@ def stok_mutasi_list():
         start=start, end=end, produk_id=pid, tipe=tipe,
         total_in=total_in, total_out=total_out
     )
+# ==================== KARYAWAN ====================
 
+# ============== MANAJEMEN KARYAWAN ==============
+@app.route('/karyawan')
+def karyawan_list():
+    daftar = Karyawan.query.order_by(Karyawan.nama.asc()).all()
+    return render_template('karyawan_list.html', daftar=daftar)
+
+@app.route('/karyawan/tambah', methods=['GET','POST'])
+def karyawan_tambah():
+    if request.method == 'POST':
+        nama   = (request.form.get('nama') or '').strip()
+        no_hp  = (request.form.get('no_hp') or '').strip()
+        alamat = (request.form.get('alamat') or '').strip()
+        aktif  = True if request.form.get('aktif') == '1' else False
+        if not nama:
+            flash("Nama karyawan wajib diisi.", "error")
+            return redirect(url_for('karyawan_tambah'))
+        k = Karyawan(nama=nama, no_hp=no_hp, alamat=alamat, aktif=aktif)
+        db.session.add(k)
+        db.session.commit()
+        flash("Karyawan ditambahkan.", "success")
+        return redirect(url_for('karyawan_list'))
+    return render_template('karyawan_form.html', mode='tambah', karyawan=None)
+
+@app.route('/karyawan/edit/<int:id>', methods=['GET','POST'])
+def karyawan_edit(id):
+    k = Karyawan.query.get_or_404(id)
+    if request.method == 'POST':
+        nama   = (request.form.get('nama') or '').strip()
+        no_hp  = (request.form.get('no_hp') or '').strip()
+        alamat = (request.form.get('alamat') or '').strip()
+        aktif  = True if request.form.get('aktif') == '1' else False
+        if not nama:
+            flash("Nama karyawan wajib diisi.", "error")
+            return redirect(url_for('karyawan_edit', id=id))
+        k.nama = nama
+        k.no_hp = no_hp
+        k.alamat = alamat
+        k.aktif = aktif
+        db.session.commit()
+        flash("Karyawan diperbarui.", "success")
+        return redirect(url_for('karyawan_list'))
+    return render_template('karyawan_form.html', mode='edit', karyawan=k)
+
+@app.route('/karyawan/hapus/<int:id>', methods=['POST'])
+def karyawan_hapus(id):
+    k = Karyawan.query.get_or_404(id)
+    db.session.delete(k)
+    db.session.commit()
+    flash("Karyawan dihapus.", "success")
+    return redirect(url_for('karyawan_list'))
+
+# ============== MANAJEMEN PEKERJAAN ==============
+@app.route('/pekerjaan')
+def pekerjaan_list():
+    daftar = Pekerjaan.query.order_by(Pekerjaan.nama.asc()).all()
+    produk_all = Produk.query.order_by(Produk.nama.asc()).all()
+    return render_template('pekerjaan_list.html', daftar=daftar, produk_all=produk_all)
+
+@app.route('/pekerjaan/tambah', methods=['GET','POST'])
+def pekerjaan_tambah():
+    if request.method == 'POST':
+        nama = (request.form.get('nama') or '').strip()
+        unit = (request.form.get('unit_label') or 'pcs').strip()
+        rate = int(request.form.get('rate_per_unit') or 0)
+        produk_id = request.form.get('produk_id')
+        pid = int(produk_id) if (produk_id and produk_id.isdigit()) else None
+        if not nama:
+            flash("Nama pekerjaan wajib diisi.", "error")
+            return redirect(url_for('pekerjaan_tambah'))
+        # validasi unique
+        if Pekerjaan.query.filter_by(nama=nama).first():
+            flash("Nama pekerjaan sudah ada.", "error")
+            return redirect(url_for('pekerjaan_tambah'))
+
+        pk = Pekerjaan(nama=nama, unit_label=unit, rate_per_unit=rate, produk_id=pid)
+        db.session.add(pk)
+        db.session.commit()
+        flash("Pekerjaan ditambahkan.", "success")
+        return redirect(url_for('pekerjaan_list'))
+    produk_all = Produk.query.order_by(Produk.nama.asc()).all()
+    return render_template('pekerjaan_form.html', mode='tambah', pekerjaan=None, produk_all=produk_all)
+
+@app.route('/pekerjaan/edit/<int:id>', methods=['GET','POST'])
+def pekerjaan_edit(id):
+    pk = Pekerjaan.query.get_or_404(id)
+    if request.method == 'POST':
+        nama = (request.form.get('nama') or '').strip()
+        unit = (request.form.get('unit_label') or 'pcs').strip()
+        rate = int(request.form.get('rate_per_unit') or 0)
+        produk_id = request.form.get('produk_id')
+        pid = int(produk_id) if (produk_id and produk_id.isdigit()) else None
+        if not nama:
+            flash("Nama pekerjaan wajib diisi.", "error")
+            return redirect(url_for('pekerjaan_edit', id=id))
+        # cek unique selain diri sendiri
+        ada = Pekerjaan.query.filter(Pekerjaan.nama == nama, Pekerjaan.id != id).first()
+        if ada:
+            flash("Nama pekerjaan sudah dipakai.", "error")
+            return redirect(url_for('pekerjaan_edit', id=id))
+        pk.nama = nama
+        pk.unit_label = unit
+        pk.rate_per_unit = rate
+        pk.produk_id = pid
+        db.session.commit()
+        flash("Pekerjaan diperbarui.", "success")
+        return redirect(url_for('pekerjaan_list'))
+    produk_all = Produk.query.order_by(Produk.nama.asc()).all()
+    return render_template('pekerjaan_form.html', mode='edit', pekerjaan=pk, produk_all=produk_all)
+
+@app.route('/pekerjaan/hapus/<int:id>', methods=['POST'])
+def pekerjaan_hapus(id):
+    pk = Pekerjaan.query.get_or_404(id)
+    db.session.delete(pk)
+    db.session.commit()
+    flash("Pekerjaan dihapus.", "success")
+    return redirect(url_for('pekerjaan_list'))
+
+# ============== PRODUKSI KARYAWAN (ENTRY HARIAN) ==============
+def week_range(d: date):
+    """Kembalikan (senin, sabtu) untuk minggu dari tanggal d."""
+    monday = d - timedelta(days=d.weekday())          # 0=Senin
+    saturday = monday + timedelta(days=5)
+    return monday, saturday
+
+@app.route('/produksi', methods=['GET','POST'])
+def produksi_karyawan():
+    # Form submit
+    if request.method == 'POST':
+        karyawan_id   = request.form.get('karyawan_id')
+        pekerjaan_id  = request.form.get('pekerjaan_id')
+        tanggal       = request.form.get('tanggal') or date.today().strftime("%Y-%m-%d")
+        qty           = int(request.form.get('qty') or 0)
+        rate_override = request.form.get('rate_override')  # opsional override rate
+        catatan       = (request.form.get('catatan') or '').strip()
+        apply_to_stock= (request.form.get('apply_to_stock') == '1')
+
+        if not (karyawan_id and pekerjaan_id) or qty <= 0:
+            flash("Input tidak lengkap atau jumlah invalid.", "error")
+            return redirect(url_for('produksi_karyawan'))
+
+        k = Karyawan.query.get(int(karyawan_id))
+        pk = Pekerjaan.query.get(int(pekerjaan_id))
+        if not k or not pk:
+            flash("Karyawan atau pekerjaan tidak ditemukan.", "error")
+            return redirect(url_for('produksi_karyawan'))
+
+        # rate snapshot
+        rate = int(rate_override) if (rate_override and rate_override.isdigit()) else int(pk.rate_per_unit or 0)
+        total = rate * qty
+
+        pr = ProduksiKaryawan(
+            tanggal=tanggal,
+            karyawan_id=k.id,
+            pekerjaan_id=pk.id,
+            qty=qty,
+            rate_snapshot=rate,
+            total_upah=total,
+            catatan=catatan,
+            apply_to_stock=apply_to_stock
+        )
+        db.session.add(pr)
+        db.session.flush()  # dapat id
+
+        # Jika perlu update stok (pekerjaan terkait produk manufaktur)
+        if apply_to_stock and pk.produk_id:
+            # panggil produksi manufaktur
+            ok, msg = produce_manufactured_product(
+                produk_id=pk.produk_id,
+                qty=qty,
+                tanggal=tanggal,
+                catatan=f"Produksi karyawan {k.nama}: {pk.nama}",
+                referensi=f"PRODKAR-{pr.id}"
+            )
+            flash(("STOK: " + msg), "success" if ok else "error")
+
+        db.session.commit()
+        flash("Entry produksi tersimpan.", "success")
+        return redirect(url_for('produksi_karyawan'))
+
+    # GET: tampilkan filter minggu & daftar
+    today = date.today()
+    start_s = request.args.get('start')
+    end_s   = request.args.get('end')
+
+    if not start_s or not end_s:
+        mon, sat = week_range(today)
+        start_s = mon.strftime("%Y-%m-%d")
+        end_s   = sat.strftime("%Y-%m-%d")
+
+    karyawan_all  = Karyawan.query.order_by(Karyawan.nama.asc()).all()
+    pekerjaan_all = Pekerjaan.query.order_by(Pekerjaan.nama.asc()).all()
+
+    q = (ProduksiKaryawan.query
+         .filter(ProduksiKaryawan.tanggal >= start_s,
+                 ProduksiKaryawan.tanggal <= end_s)
+         .order_by(ProduksiKaryawan.tanggal.desc(), ProduksiKaryawan.id.desc()))
+    rows = q.all()
+
+    return render_template('produksi_karyawan.html',
+                           karyawan_all=karyawan_all,
+                           pekerjaan_all=pekerjaan_all,
+                           rows=rows,
+                           start=start_s, end=end_s)
+
+# ============== GAJIAN KARYAWAN ==============
+@app.route('/gajian')
+def gajian_view():
+    # filter karyawan + range (default minggu berjalan)
+    today = date.today()
+    mon, sat = week_range(today)
+    default_start = mon.strftime("%Y-%m-%d")
+    default_end   = sat.strftime("%Y-%m-%d")
+
+    karyawan_id = request.args.get('karyawan_id')
+    start_s     = request.args.get('start', default_start)
+    end_s       = request.args.get('end', default_end)
+
+    karyawan_all = Karyawan.query.order_by(Karyawan.nama.asc()).all()
+    selected = None
+    data_rows = []
+    total_all = 0
+    harian = {}  # {tanggal: total_upah_hari_itu}
+
+    if karyawan_id and karyawan_id.isdigit():
+        selected = Karyawan.query.get(int(karyawan_id))
+        if selected:
+            q = (ProduksiKaryawan.query
+                 .filter(ProduksiKaryawan.karyawan_id == selected.id,
+                         ProduksiKaryawan.tanggal >= start_s,
+                         ProduksiKaryawan.tanggal <= end_s)
+                 .order_by(ProduksiKaryawan.tanggal.asc()))
+            data_rows = q.all()
+            # hitung rekap per hari
+            for r in data_rows:
+                harian[r.tanggal] = harian.get(r.tanggal, 0) + (r.total_upah or 0)
+                total_all += (r.total_upah or 0)
+
+    # susun hari senin-sabtu
+    try:
+        start_d = datetime.strptime(start_s, "%Y-%m-%d").date()
+        end_d   = datetime.strptime(end_s, "%Y-%m-%d").date()
+    except:
+        start_d, end_d = mon, sat
+    days = []
+    cur = start_d
+    while cur <= end_d:
+        days.append(cur.strftime("%Y-%m-%d"))
+        cur += timedelta(days=1)
+
+    # rekap per pekerjaan
+    rekap_job = {}  # nama_pekerjaan -> {qty, total_upah}
+    for r in data_rows:
+        nm = r.pekerjaan.nama if r.pekerjaan else "(?)"
+        if nm not in rekap_job:
+            rekap_job[nm] = {"qty": 0, "upah": 0, "unit": (r.pekerjaan.unit_label if r.pekerjaan else 'pcs')}
+        rekap_job[nm]["qty"]  += (r.qty or 0)
+        rekap_job[nm]["upah"] += (r.total_upah or 0)
+
+    return render_template('gajian.html',
+                           karyawan_all=karyawan_all,
+                           selected=selected,
+                           start=start_s, end=end_s,
+                           days=days,
+                           harian=harian,
+                           rekap_job=rekap_job,
+                           total_all=total_all)
+                           
 # ==================== ROOMS (opsional) ====================
 @app.route('/room/new')
 def room_new():

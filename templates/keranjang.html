@@ -24,11 +24,11 @@
   }
   .price-link:hover{ background:#eef2ff; border-color:#c7d2fe; }
 
-  /* Modal ringkas (Ubah Harga & Potensi Keuntungan) */
+  /* Modal ringkas */
   .modal-backdrop{position:fixed; inset:0; background:rgba(16,24,40,.4); display:none; align-items:center; justify-content:center; z-index:2000;}
   .modal-backdrop.show{display:flex;}
   .modal{
-    width:min(420px, 92vw); background:#fff; border-radius:12px; box-shadow:0 30px 60px rgba(0,0,0,.2);
+    width:min(520px, 92vw); background:#fff; border-radius:12px; box-shadow:0 30px 60px rgba(0,0,0,.2);
     overflow:hidden;
   }
   .modal-head{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #eef1f5;}
@@ -83,12 +83,16 @@
                      min="0"
                      value="{{ item.jumlah }}"
                      oninput="autoSaveQty()">
-              <!-- Note: harga tidak diinput di form ini -->
+              <!-- Harga snapshot yang dipakai hitung -->
               <input type="hidden" name="price[]" value="{{ item.harga }}">
+              <!-- HPP per item (diisi dari backend) -->
+              <input type="hidden" class="hpp-val" value="{{ produk_hpp.get(key, 0) }}">
             </td>
             <td class="right">Rp {{ "{:,}".format(subtotal) }}</td>
             <td class="actions">
               <!-- Hapus 1 item -->
+              <!-- CATATAN: idealnya form hapus tidak di-nesting di form update; 
+                   tapi tetap jalan di banyak browser. Kalau mau rapi, pindahkan form hapus ke luar form update. -->
               <form id="del-{{ key }}" action="{{ url_for('hapus_item_keranjang', pid=key) }}" method="post" style="display:inline;"></form>
               <button type="submit"
                       class="btn btn-danger"
@@ -110,7 +114,7 @@
     </table>
   </form>
 
-  <!-- Footer Actions (DI LUAR updateForm agar tidak nested) -->
+  <!-- Footer Actions -->
   <div class="footer-actions">
     <!-- BATALKAN SEMUA -->
     <form action="{{ url_for('keranjang_clear') }}" method="post" onsubmit="return confirm('Batalkan & kosongkan semua item dari keranjang?')">
@@ -167,7 +171,7 @@
     </div>
   </div>
 </div>
-
+  
 <script>
   // ====== Auto-save QTY (tanpa tombol update) ======
   let qtyTimer = null;
@@ -200,41 +204,60 @@
     document.body.style.overflow = '';
   }
 
-  // ====== Potensi Keuntungan (contoh sederhana: margin 20%) ======
+  // ====== Potensi Keuntungan = (Harga − HPP) × Qty ======
   function fmt(n){ try{ return 'Rp ' + (n||0).toLocaleString('id-ID'); }catch(e){ return 'Rp ' + n; } }
+
   function openProfit(){
     const rows = [...document.querySelectorAll('tbody tr')];
     let totalProfit = 0;
-    let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+    let html = `
+
+    `;
 
     rows.forEach(tr => {
       const nama  = tr.querySelector('td strong')?.textContent || '';
-      // Ambil harga dari link (innerText) → ambil angka saja
-      const hargaText = tr.querySelector('.price-link')?.textContent || '0';
-      const harga = parseInt(hargaText.replace(/[^\d]/g,''), 10) || 0;
-      const qty   = parseInt(tr.querySelector('input[name="qty[]"]')?.value || '0', 10) || 0;
+      const priceInput = tr.querySelector('input[name="price[]"]');
+      const qtyInput   = tr.querySelector('input[name="qty[]"]');
+      const hppInput   = tr.querySelector('.hpp-val');
 
-      const profit = Math.round(harga * 0.20) * qty;
-      totalProfit += profit;
+      const harga = parseInt((priceInput?.value || '0').replace(/[^\d]/g,''), 10) || 0;
+      const qty   = parseInt(qtyInput?.value || '0', 10) || 0;
+      const hpp   = parseInt(hppInput?.value || '0', 10) || 0;
+
+      const profitPerItem = (harga - hpp);
+      const lineProfit    = profitPerItem * qty;
+
+      totalProfit += lineProfit;
 
       if(nama && qty>0){
-        html += `<div style="display:flex; justify-content:space-between;">
-                  <span>${nama} × ${qty}</span><strong>${fmt(profit)}</strong>
-                </div>`;
+        html += `
+          <div style="display:flex; justify-content:space-between; gap:12px;">
+            <span>
+              {{- "" -}}
+              <strong>${nama}</strong> × ${qty}
+              <span style="color:#6b7280;">(${fmt(harga)})</span>
+            </span>
+            <strong>${fmt(lineProfit)}</strong>
+          </div>
+        `;
       }
     });
 
-    html += `<hr style="border:none; border-top:1px solid #eee;">`;
-    html += `<div style="display:flex; justify-content:space-between;">
-               <span>Total Potensi</span><strong>${fmt(totalProfit)}</strong>
-             </div>`;
-    html += '</div>';
+    html += `
+      <hr style="border:none; border-top:1px solid #eee;">
+      <div style="display:flex; justify-content:space-between;">
+        <span>Total Potensi Keuntungan</span><strong>${fmt(totalProfit)}</strong>
+      </div>
+      </div>
+    `;
 
     document.getElementById('profitBody').innerHTML = html;
-    document.getElementById('profitBackdrop').classList.add('show');
-    document.getElementById('profitBackdrop').setAttribute('aria-hidden','false');
+    const bd = document.getElementById('profitBackdrop');
+    bd.classList.add('show');
+    bd.setAttribute('aria-hidden','false');
     document.body.style.overflow = 'hidden';
   }
+
   function closeProfit(){
     document.getElementById('profitBackdrop').classList.remove('show');
     document.getElementById('profitBackdrop').setAttribute('aria-hidden','true');

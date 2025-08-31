@@ -245,6 +245,17 @@
       </div>
     </div>
 
+    <!-- Karyawan -->
+<div class="side-group">
+  <div class="side-title">Karyawan</div>
+  <button class="side-btn" id="btnKaryawan" aria-expanded="false" aria-controls="dropKaryawan">👥 Karyawan</button>
+  <div id="dropKaryawan" class="dropdown" aria-hidden="true">
+    <a class="{{ 'active' if ep == 'karyawan_list' else '' }}" href="{{ url_for('karyawan_list') }}">👤 Manajemen Karyawan</a>
+    <a class="{{ 'active' if ep == 'pekerjaan_list' else '' }}" href="{{ url_for('pekerjaan_list') }}">🧰 Pekerjaan</a>
+    <a class="{{ 'active' if ep == 'produksi_karyawan' else '' }}" href="{{ url_for('produksi_karyawan') }}">📝 Produksi Harian</a>
+    <a class="{{ 'active' if ep == 'gajian_view' else '' }}" href="{{ url_for('gajian_view') }}">💸 Gajian</a>
+  </div>
+</div>
     <!-- Rooms (opsional) -->
     <!--
     <div class="side-group">
@@ -273,6 +284,38 @@
 </div>
 
 <script>
+
+  // ====== Karyawan ============
+
+   // ... (script sidebar yang sudah ada)
+  const btnKaryawan  = document.getElementById('btnKaryawan');
+  const dropKaryawan = document.getElementById('dropKaryawan');
+
+  function closeDropKaryawan(){
+    if(!dropKaryawan) return;
+    dropKaryawan.classList.remove('show');
+    btnKaryawan?.setAttribute('aria-expanded','false');
+    dropKaryawan.setAttribute('aria-hidden','true');
+    try{ localStorage.setItem('drop:karyawan','0'); }catch(e){}
+  }
+  function openDropKaryawan(){
+    if(!dropKaryawan) return;
+    dropKaryawan.classList.add('show');
+    btnKaryawan?.setAttribute('aria-expanded','true');
+    dropKaryawan.setAttribute('aria-hidden','false');
+    try{ localStorage.setItem('drop:karyawan','1'); }catch(e){}
+  }
+  btnKaryawan?.addEventListener('click', ()=>{
+    const exp = btnKaryawan.getAttribute('aria-expanded') === 'true';
+    exp ? closeDropKaryawan() : openDropKaryawan();
+  });
+  (function restoreDK(){
+    try{
+      const st = localStorage.getItem('drop:karyawan');
+      if(st === '1') openDropKaryawan();
+    }catch(e){}
+  })();
+  
   // ====== Header spacer sync ======
   (function(){
     const header = document.getElementById('appHeader');

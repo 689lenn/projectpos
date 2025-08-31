@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Tambah' if mode=='tambah' else 'Edit' }} Pekerjaan{% endblock %}
+{% block content %}
+<h1>{{ 'Tambah' if mode=='tambah' else 'Edit' }} Pekerjaan</h1>
+<div class="card">
+  <form method="post">
+    <label>Nama Pekerjaan</label>
+    <input class="control" name="nama" value="{{ pekerjaan.nama if pekerjaan else '' }}" required>
+
+    <label style="margin-top:10px;">Unit Label</label>
+    <input class="control" name="unit_label" value="{{ pekerjaan.unit_label if pekerjaan else 'pcs' }}" required>
+
+    <label style="margin-top:10px;">Rate per Unit (Rp)</label>
+    <input class="control" name="rate_per_unit" type="number" min="0" value="{{ pekerjaan.rate_per_unit if pekerjaan else 0 }}" required>
+
+    <label style="margin-top:10px;">Tautkan ke Produk (opsional)</label>
+    <select class="control" name="produk_id">
+      <option value="">(Tidak ada)</option>
+      {% for p in produk_all %}
+      <option value="{{ p.id }}" {% if pekerjaan and pekerjaan.produk_id == p.id %}selected{% endif %}>{{ p.nama }}</option>
+      {% endfor %}
+    </select>
+
+    <div class="actions">
+      <a class="btn btn-muted" href="{{ url_for('pekerjaan_list') }}">Batal</a>
+      <button class="btn btn-primary" type="submit">Simpan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

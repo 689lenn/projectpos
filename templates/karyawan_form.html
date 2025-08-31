@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Tambah' if mode=='tambah' else 'Edit' }} Karyawan{% endblock %}
+{% block content %}
+<h1>{{ 'Tambah' if mode=='tambah' else 'Edit' }} Karyawan</h1>
+<div class="card">
+  <form method="post">
+    <label>Nama</label>
+    <input class="control" name="nama" value="{{ karyawan.nama if karyawan else '' }}" required>
+
+    <label style="margin-top:10px;">No HP</label>
+    <input class="control" name="no_hp" value="{{ karyawan.no_hp if karyawan else '' }}">
+
+    <label style="margin-top:10px;">Alamat</label>
+    <textarea class="control" name="alamat">{{ karyawan.alamat if karyawan else '' }}</textarea>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="aktif" name="aktif" value="1" {% if (karyawan and karyawan.aktif) or mode=='tambah' %}checked{% endif %}>
+      <label for="aktif" style="margin:0;">Aktif</label>
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-muted" href="{{ url_for('karyawan_list') }}">Batal</a>
+      <button class="btn btn-primary" type="submit">Simpan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Gajian Karyawan{% endblock %}
+{% block content %}
+<h1>Gajian Karyawan</h1>
+
+<div class="card" style="margin-bottom:12px;">
+  <form method="get">
+    <div class="grid">
+      <div>
+        <label>Karyawan</label>
+        <select class="control" name="karyawan_id" required>
+          <option value="">- Pilih Karyawan -</option>
+          {% for k in karyawan_all %}
+          <option value="{{ k.id }}" {% if selected and selected.id==k.id %}selected{% endif %}>{{ k.nama }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Periode (Mingguan)</label>
+        <div style="display:flex; gap:8px;">
+          <input class="control" type="date" name="start" value="{{ start }}">
+          <input class="control" type="date" name="end" value="{{ end }}">
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Tampilkan</button>
+    </div>
+  </form>
+</div>
+
+{% if selected %}
+<div class="card" style="margin-bottom:12px;">
+  <h3>Rekap Harian: {{ selected.nama }}</h3>
+  <table style="width:100%; border-collapse:collapse;">
+    <thead><tr><th>Tanggal</th><th>Total Upah Hari Itu</th></tr></thead>
+    <tbody>
+      {% for d in days %}
+      <tr>
+        <td>{{ d }}</td>
+        <td>{{ rupiah(harian.get(d,0)) }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <th>Total</th>
+        <th>{{ rupiah(total_all) }}</th>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Rekap per Pekerjaan</h3>
+  <table style="width:100%; border-collapse:collapse;">
+    <thead><tr><th>Pekerjaan</th><th>Qty</th><th>Unit</th><th>Upah</th></tr></thead>
+    <tbody>
+      {% for nm, val in rekap_job.items() %}
+      <tr>
+        <td>{{ nm }}</td>
+        <td>{{ val.qty }}</td>
+        <td>{{ val.unit }}</td>
+        <td>{{ rupiah(val.upah) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">Belum ada data.</td></tr>
+      {% endfor %}
+      <tr>
+        <th colspan="3">TOTAL</th>
+        <th>{{ rupiah(total_all) }}</th>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

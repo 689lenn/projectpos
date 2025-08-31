@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Pekerjaan{% endblock %}
+{% block content %}
+<h1>Manajemen Pekerjaan</h1>
+<div class="actions" style="margin-bottom:10px;">
+  <a class="btn btn-primary" href="{{ url_for('pekerjaan_tambah') }}">+ Tambah Pekerjaan</a>
+</div>
+<div class="card">
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr><th>Nama Pekerjaan</th><th>Rate</th><th>Unit</th><th>Produk (optional)</th><th>Aksi</th></tr>
+    </thead>
+    <tbody>
+      {% for p in daftar %}
+      <tr>
+        <td>{{ p.nama }}</td>
+        <td>{{ rupiah(p.rate_per_unit) }}</td>
+        <td>{{ p.unit_label }}</td>
+        <td>{{ p.produk.nama if p.produk else '-' }}</td>
+        <td>
+          <a class="btn btn-primary" href="{{ url_for('pekerjaan_edit', id=p.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('pekerjaan_hapus', id=p.id) }}" style="display:inline;" onsubmit="return confirm('Hapus pekerjaan ini?')">
+            <button class="btn btn-muted" type="submit" style="background:#ef4444;">Hapus</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Belum ada data.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
