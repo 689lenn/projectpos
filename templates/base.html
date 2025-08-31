@@ -6,39 +6,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     /* ===== Floating Cart Button (Bottom Full Width) ===== */
-.fab-cart{
-  position: fixed; left: 0; right: 0; bottom: 0;
-  padding: 14px 16px;
-  background: var(--brand);
-  color: #fff; text-decoration: none; font-weight: 800;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  border: none; outline: none;
-  border-top-left-radius: 12px; border-top-right-radius: 12px;
-  box-shadow: 0 -6px 18px rgba(0,0,0,.12);
-  z-index: 950;
-}
+    .fab-cart{
+      position: fixed; left: 0; right: 0; bottom: 0;
+      padding: 14px 16px;
+      background: var(--brand);
+      color: #fff; text-decoration: none; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      border: none; outline: none;
+      border-top-left-radius: 12px; border-top-right-radius: 12px;
+      box-shadow: 0 -6px 18px rgba(0,0,0,.12);
+      z-index: 950; /* Sidebar & backdrop berada di atas (lihat variabel z-index di :root) */
+    }
+    .fab-badge{
+      background: var(--badge-bg);
+      color: var(--badge-txt);
+      min-width: 22px; height: 22px; padding: 0 8px;
+      border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+    }
+    .fab-cart{
+      transition: transform .15s ease, filter .2s ease, box-shadow .2s ease;
+    }
+    .fab-cart:hover{
+      filter: brightness(1.05);
+      box-shadow: 0 -8px 24px rgba(0,0,0,.16);
+      transform: scale(1.02);
+    }
+    .fab-cart:active{
+      transform: scale(0.98);
+    }
 
-/* Badge di tombol */
-.fab-badge{
-  background: var(--badge-bg);
-  color: var(--badge-txt);
-  min-width: 22px; height: 22px; padding: 0 8px;
-  border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 800;
-}
-
-/* Efek hover/klik (tidak geser-geser) */
-.fab-cart{
-  transition: transform .15s ease, filter .2s ease, box-shadow .2s ease;
-}
-.fab-cart:hover{
-  filter: brightness(1.05);
-  box-shadow: 0 -8px 24px rgba(0,0,0,.16);
-  transform: scale(1.02);        /* sedikit zoom */
-}
-.fab-cart:active{
-  transform: scale(0.98);        /* efek klik halus */
-}
     :root{
       /* Warna & tema */
       --brand: #007bff;
@@ -63,8 +60,8 @@
       --z-header: 1000;
 
       /* Layering */
-      --z-sidebar: 5000;   /* naikkan agar di atas FAB */
-      --z-backdrop: 4800;  /* backdrop di bawah sidebar, di atas FAB */
+      --z-sidebar: 5000;   /* Sidebar di atas FAB */
+      --z-backdrop: 4800;  /* Backdrop di bawah sidebar, tapi di atas FAB */
 
       /* Button & badge */
       --btn-radius: 10px;
@@ -90,7 +87,6 @@
     }
     .header-left, .header-right { display:flex; align-items:center; gap:10px; }
     .app-title { font-weight:800; letter-spacing:.3px; }
-
     .header-spacer{ height: var(--header-h); } /* cegah konten ketutupan header */
 
     /* Hamburger */
@@ -103,15 +99,11 @@
     .menu-btn:hover{ filter: brightness(.96); transform: translateY(-1px); }
     .menu-btn:active{ transform: translateY(0); }
     .menu-btn svg{ width: 22px; height: 22px; }
-    /* Saat sidebar terbuka, sembunyikan hamburger */
     body.sidebar-open .menu-btn{ display:none; }
 
     /* ===== Layout utama ===== */
     .container { display:flex; min-height: calc(100vh - var(--header-h)); }
-    .main {
-      flex:1; margin-left:0; padding:16px;
-      transition: margin-left .3s ease;
-    }
+    .main { flex:1; margin-left:0; padding:16px; transition: margin-left .3s ease; }
     .main > *:first-child { margin-top: 0; }
 
     /* ===== Sidebar ===== */
@@ -152,22 +144,19 @@
     }
     .dropdown a:hover { background:#2c3035; }
 
-    /* Backdrop saat sidebar tampil: full screen + blur */
-.backdrop{
-  position: fixed;
-  inset: 0;                         /* tutup seluruh layar */
-  background: rgba(15,23,42,.35);   /* gelap transparan */
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px); /* Safari/iOS */
-  z-index: var(--z-backdrop);
-  display: none;
-  opacity: 0;
-  transition: opacity .2s ease;
-}
-.backdrop.show{
-  display: block;
-  opacity: 1;
-}
+    /* Backdrop: full screen + blur */
+    .backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: var(--z-backdrop);
+      display: none;
+      opacity: 0;
+      transition: opacity .2s ease;
+    }
+    .backdrop.show{ display: block; opacity: 1; }
 
     .badge{
       display:inline-flex; align-items:center; justify-content:center;
@@ -177,7 +166,7 @@
       transform: translateY(-1px);
     }
 
-    /* Desktop: sidebar permanen, backdrop & hamburger disembunyikan */
+    /* Desktop: sidebar permanen */
     @media (min-width: 992px) {
       .sidebar { transform: translateX(0); position: sticky; top: var(--header-h); }
       .main { margin-left: var(--sidew); }
@@ -185,14 +174,13 @@
       .menu-btn { display:none; }
     }
 
-    /* Flash sederhana */
+    /* Flash */
     .flash-wrap{ margin-bottom:10px; }
     .flash { background:#f8d7da; color:#842029; padding:8px 10px; border-radius:8px; border:1px solid #f5c2c7; }
     .flash.success { background: #d1e7dd; color:#0f5132; border-color:#badbcc; }
     .flash.info    { background: #cff4fc; color:#055160; border-color:#b6effb; }
     .flash.warn    { background: #fff3cd; color:#664d03; border-color:#ffecb5; }
 
-    /* Focus ring aksesibilitas */
     .side-btn:focus, .side-link:focus, .menu-btn:focus, .btn:focus {
       outline: 2px solid #a6c8ff;
       outline-offset: 2px;
@@ -214,16 +202,11 @@
       </button>
       <div class="app-title">POS App</div>
     </div>
-    <div class="header-right">
-      <!-- (Kosongkan agar header tetap bersih) -->
-    </div>
+    <div class="header-right"></div>
   </div>
 </header>
 
-<!-- Spacer agar konten tidak tertutup header fixed -->
 <div id="headerSpacer" class="header-spacer"></div>
-
-<!-- Backdrop untuk mobile -->
 <div id="sidebarBackdrop" class="backdrop" aria-hidden="true"></div>
 
 <div class="container">
@@ -241,6 +224,7 @@
         <a class="{{ 'active' if ep == 'produk_list' else '' }}" href="{{ url_for('produk_list') }}">📦 Produk</a>
         <a class="{{ 'active' if ep == 'kategori_list' else '' }}" href="{{ url_for('kategori_list') }}">🏷️ Kategori</a>
         <a class="{{ 'active' if ep == 'customer_list' else '' }}" href="{{ url_for('customer_list') }}">👤 Customer</a>
+        <a class="{{ 'active' if ep == 'stok_dashboard' else '' }}" href="{{ url_for('stok_dashboard') }}">📦 Stok</a>
       </div>
     </div>
 
@@ -250,24 +234,28 @@
       <a class="side-link {{ 'active' if ep == 'index' else '' }}" href="{{ url_for('index') }}">🛒 Transaksi</a>
     </div>
 
-    <!-- Laporan -->
-     <!-- Laporan -->
-<div class="side-group">
-  <div class="side-title">Laporan</div>
-  <a class="side-link {{ 'active' if ep == 'transaksi_list' else '' }}" href="{{ url_for('transaksi_list') }}">📃 Daftar Transaksi</a>
-  <a class="side-link {{ 'active' if ep == 'laporan_home' else '' }}" href="{{ url_for('laporan_home') }}">📊 Laporan & Analitik</a>
-</div>
-   
-    <!-- Rooms -->
-    <!-- <div class="side-group">
+    <!-- Laporan (Dropdown seperti Manajemen) -->
+    <div class="side-group">
+      <div class="side-title">Laporan</div>
+      <button class="side-btn" id="btnLaporan" aria-expanded="false" aria-controls="dropLaporan">📊 Laporan</button>
+      <div id="dropLaporan" class="dropdown" aria-hidden="true">
+        <a class="{{ 'active' if ep == 'transaksi_list' else '' }}" href="{{ url_for('transaksi_list') }}">📃 Daftar Transaksi</a>
+        <a class="{{ 'active' if ep == 'laporan_home' else '' }}" href="{{ url_for('laporan_home') }}">📊 Laporan & Analitik</a>
+        <a class="{{ 'active' if ep == 'stok_mutasi_list' else '' }}" href="{{ url_for('stok_mutasi_list') }}">📈 Mutasi Stok</a>
+      </div>
+    </div>
+
+    <!-- Rooms (opsional) -->
+    <!--
+    <div class="side-group">
       <div class="side-title">Rooms</div>
       <a class="side-link {{ 'active' if ep == 'rooms_list' else '' }}" href="{{ url_for('rooms_list') }}">🗂️ Rooms</a>
-    </div> -->
+    </div>
+    -->
   </aside>
-  
+
   <!-- Main content -->
   <main class="main" id="mainContent">
-    <!-- Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
       <div class="flash-wrap">
@@ -285,7 +273,7 @@
 </div>
 
 <script>
-  // ====== Ukur tinggi header → spacer & sidebar top ======
+  // ====== Header spacer sync ======
   (function(){
     const header = document.getElementById('appHeader');
     const spacer = document.getElementById('headerSpacer');
@@ -299,21 +287,25 @@
   })();
 
   // ====== Sidebar logic ======
-  const body          = document.body;
-  const sidebar       = document.getElementById('sidebar');
-  const mainContent   = document.getElementById('mainContent');
-  const backdrop      = document.getElementById('sidebarBackdrop');
-  const menuBtn       = document.getElementById('menuBtn');
+  const body        = document.body;
+  const sidebar     = document.getElementById('sidebar');
+  const mainContent = document.getElementById('mainContent');
+  const backdrop    = document.getElementById('sidebarBackdrop');
+  const menuBtn     = document.getElementById('menuBtn');
 
-  const btnManajemen  = document.getElementById('btnManajemen');
-  const dropManajemen = document.getElementById('dropManajemen');
+  const btnManajemen   = document.getElementById('btnManajemen');
+  const dropManajemen  = document.getElementById('dropManajemen');
+
+  // Laporan
+  const btnLaporan  = document.getElementById('btnLaporan');
+  const dropLaporan = document.getElementById('dropLaporan');
 
   function openSidebar(){
     sidebar.classList.add('show');
     backdrop.classList.add('show');
     backdrop.setAttribute('aria-hidden', 'false');
     menuBtn?.setAttribute('aria-expanded', 'true');
-    body.classList.add('sidebar-open');  // → sembunyikan hamburger
+    body.classList.add('sidebar-open');
     sidebar.focus();
   }
   function closeSidebar(){
@@ -321,8 +313,10 @@
     backdrop.classList.remove('show');
     backdrop.setAttribute('aria-hidden', 'true');
     menuBtn?.setAttribute('aria-expanded', 'false');
-    body.classList.remove('sidebar-open'); // → tampilkan hamburger lagi
-    closeDrop();
+    body.classList.remove('sidebar-open');
+    // Tutup semua dropdown
+    closeDropManajemen();
+    closeDropLaporan();
   }
   function toggleSidebar(){
     if (sidebar.classList.contains('show')) closeSidebar(); else openSidebar();
@@ -332,7 +326,6 @@
   backdrop?.addEventListener('click', closeSidebar);
   mainContent?.addEventListener('click', () => { if (sidebar.classList.contains('show')) closeSidebar(); });
 
-  // ESC untuk menutup
   document.addEventListener('keydown', (e)=>{
     if(e.key === 'Escape' && sidebar.classList.contains('show')){
       closeSidebar();
@@ -341,35 +334,74 @@
   });
 
   // ====== Dropdown Manajemen ======
-  function closeDrop() {
+  function closeDropManajemen() {
     if(!dropManajemen) return;
     dropManajemen.classList.remove('show');
     btnManajemen?.setAttribute('aria-expanded', 'false');
     dropManajemen.setAttribute('aria-hidden', 'true');
     try{ localStorage.setItem('drop:manajemen', '0'); }catch(e){}
   }
-  function openDrop() {
+  function openDropManajemen() {
     if(!dropManajemen) return;
     dropManajemen.classList.add('show');
     btnManajemen?.setAttribute('aria-expanded', 'true');
     dropManajemen.setAttribute('aria-hidden', 'false');
     try{ localStorage.setItem('drop:manajemen', '1'); }catch(e){}
   }
-
   btnManajemen?.addEventListener('click', () => {
     const expanded = btnManajemen.getAttribute('aria-expanded') === 'true';
-    expanded ? closeDrop() : openDrop();
+    expanded ? closeDropManajemen() : openDropManajemen();
+  });
+
+  // ====== Dropdown Laporan ======
+  function closeDropLaporan() {
+    if(!dropLaporan) return;
+    dropLaporan.classList.remove('show');
+    btnLaporan?.setAttribute('aria-expanded', 'false');
+    dropLaporan.setAttribute('aria-hidden', 'true');
+    try{ localStorage.setItem('drop:laporan', '0'); }catch(e){}
+  }
+  function openDropLaporan() {
+    if(!dropLaporan) return;
+    dropLaporan.classList.add('show');
+    btnLaporan?.setAttribute('aria-expanded', 'true');
+    dropLaporan.setAttribute('aria-hidden', 'false');
+    try{ localStorage.setItem('drop:laporan', '1'); }catch(e){}
+  }
+  btnLaporan?.addEventListener('click', () => {
+    const expanded = btnLaporan.getAttribute('aria-expanded') === 'true';
+    expanded ? closeDropLaporan() : openDropLaporan();
+  });
+
+  // Tutup dropdown jika klik area lain di dalam sidebar (bukan tombol/isinya)
+  document.addEventListener('click', (e) => {
+    if(!sidebar.contains(e.target)) return;
+
+    // Manajemen
+    const onBtnM  = btnManajemen && btnManajemen.contains(e.target);
+    const inDropM = dropManajemen && dropManajemen.contains(e.target);
+
+    // Laporan
+    const onBtnL  = btnLaporan && btnLaporan.contains(e.target);
+    const inDropL = dropLaporan && dropLaporan.contains(e.target);
+
+    if (!onBtnM && !inDropM && !onBtnL && !inDropL){
+      closeDropManajemen();
+      closeDropLaporan();
+    }
   });
 
   // Pulihkan status dropdown dari localStorage
-  (function restoreDropdown(){
+  (function restoreDropdowns(){
     try {
-      const st = localStorage.getItem('drop:manajemen');
-      if(st === '1') openDrop();
+      const stM = localStorage.getItem('drop:manajemen');
+      if(stM === '1') openDropManajemen();
+    } catch(e){}
+    try {
+      const stL = localStorage.getItem('drop:laporan');
+      if(stL === '1') openDropLaporan();
     } catch(e){}
   })();
-
-  
 </script>
 
 {% block scripts %}{% endblock %}

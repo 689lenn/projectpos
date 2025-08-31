@@ -147,12 +147,17 @@
 
   /* Toast */
   .toast {
-    position: fixed; right: 16px; bottom: 16px;
-    background:#16a34a; color:#fff; padding:10px 14px; border-radius: 10px;
-    box-shadow: 0 6px 16px rgba(0,0,0,.15);
-    z-index: 3000; opacity: 0; transform: translateY(8px);
-    animation: toast-in .25s ease forwards, toast-out .25s ease 2.75s forwards;
-  }
+  position: fixed;
+  top: 250px;       /* dari atas */
+  right: 20px;     /* dari kanan */
+  z-index: 9999;
+  background: #16a34a;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.15);
+  animation: fadein .3s, fadeout .3s 3s;
+}
   .toast.error { background:#dc3545; }
   @keyframes toast-in { to { opacity: 1; transform: translateY(0); } }
   @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
@@ -312,10 +317,12 @@
 <div class="fab-spacer" aria-hidden="true"></div>
 
 <!-- Tombol Keranjang -->
+
 <a href="{{ url_for('keranjang_view') }}" class="fab-cart" aria-label="Buka keranjang">
   🧺 Keranjang
   <span id="fabBadge" class="fab-badge">{{ cart_count or 0 }}</span>
 </a>
+
 <script>
   // Contoh sederhana: kalau ada global cart_count di server, badge akan mengikuti
   (function syncBadge(){

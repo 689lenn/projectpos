@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Manajemen Stok{% endblock %}
+
+{% block head %}
+<style>
+  .wrap{max-width: 1000px; margin:0 auto;}
+  .card{background:#fff; border:1px solid #e6e8f0; border-radius:12px; padding:16px; box-shadow: var(--shadow);}
+  .head-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
+  .btn{border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer;}
+  .btn-primary{background:#007bff; color:#fff;}
+  .btn-muted{background:#6b7280; color:#fff;}
+  .btn-danger{background:#ef4444; color:#fff;}
+  .search{max-width:320px; width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; outline:none;}
+
+  table{width:100%; border-collapse:collapse;}
+  th,td{border-bottom:1px solid #edf0f5; padding:10px;}
+  th{background:#f9fafb; text-align:left; font-size:13px; color:#6b7280;}
+  .act{display:flex; gap:8px; flex-wrap:wrap;}
+  .pill{display:inline-block; padding:6px 10px; background:#f3f4f6; border-radius:999px; font-size:12px;}
+
+  /* Modal backdrop & dialog (khusus stok) */
+  .stok-backdrop{
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.35);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display:none; opacity:0;
+    z-index: 6000; /* di atas sidebar */
+    transition: opacity .18s ease;
+  }
+  .stok-backdrop.show{ display:block; opacity:1; }
+
+  .stok-modal{
+    position: fixed; left: 50%; top: 7vh; transform: translateX(-50%);
+    width: min(640px, calc(100% - 24px));
+    background:#fff; border-radius:14px; border:1px solid #e6e8f0;
+    box-shadow: 0 30px 70px rgba(0,0,0,.18);
+    z-index: 6100; display:none;
+  }
+  .stok-modal.show{ display:block; }
+  .stok-modal .hd{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #eef1f5;}
+  .stok-modal .ct{padding:16px;}
+  .stok-modal .ft{display:flex; justify-content:flex-end; gap:10px; padding:14px 16px; border-top:1px solid #eef1f5;}
+
+  .control{width:100%; padding:10px 12px; border:1px solid #e6e8f0; border-radius:10px; outline:none;}
+  .control:focus{border-color:#cfe3ff; box-shadow:0 0 0 4px rgba(0,123,255,.2);}
+  label{display:block; font-size:13px; color:#6b7280; margin:10px 0 6px; font-weight:600;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media (max-width:680px){ .row2{grid-template-columns:1fr;} }
+
+  .info-manu{
+    background:#f7fbff; border:1px dashed #93c5fd;
+    padding:10px 12px; border-radius:10px; color:#1d4ed8; font-size:13px;
+    margin-top:8px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h1>Manajemen Stok</h1>
+
+  <div class="card">
+    <div class="head-row">
+      <input id="stokSearch" class="search" type="search" placeholder="Cari produk...">
+      <button class="btn btn-primary" onclick="openStokModal()">+ Tambah/Kurangi Stok</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Produk</th>
+          <th>Stok</th>
+          <th>HPP</th>
+          <th>Harga</th>
+          <th>Manufaktur</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="stokTbody">
+        {% for p in daftar_produk %}
+        <tr data-name="{{ (p.nama or '')|lower }}">
+          <td>
+            <div style="font-weight:700">{{ p.nama }}</div>
+            <div class="pill">ID: {{ p.id }}</div>
+            {% if p.kategori %}<div class="pill">{{ p.kategori.nama }}</div>{% endif %}
+          </td>
+          <td><strong>{{ p.stok }}</strong></td>
+          <td>{{ rupiah(p.hpp or 0) }}</td>
+          <td>{{ rupiah(p.harga or 0) }}</td>
+          <td>
+            {% if p.resep_bahan|length > 0 %}
+              <span class="pill" style="background:#dbeafe; color:#1e40af;">Ya (punya resep)</span>
+            {% else %}
+              <span class="pill" style="background:#f3f4f6; color:#374151;">Tidak</span>
+            {% endif %}
+          </td>
+          <td class="act">
+            <button class="btn btn-primary" 
+                    onclick="openStokModal({{ p.id }}, '{{ p.nama|escape }}', {{ 1 if p.resep_bahan|length > 0 else 0 }})">
+              Kelola Stok
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== Modal Kelola Stok (unik: stok-backdrop & stok-modal) ===== -->
+<div id="stok-backdrop" class="stok-backdrop" aria-hidden="true"></div>
+<div id="stok-modal" class="stok-modal" role="dialog" aria-modal="true" aria-labelledby="stokModalTitle">
+  <div class="hd">
+    <div id="stokModalTitle" style="font-weight:800;">Kelola Stok</div>
+    <button class="btn btn-muted" type="button" onclick="closeStokModal()">Tutup</button>
+  </div>
+  <form id="stokForm" method="post" action="{{ url_for('stok_adjust') }}">
+    <div class="ct">
+
+      <input type="hidden" name="produk_id" id="fProdukId">
+
+      <label>Produk</label>
+      <select id="fProdukSelect" class="control" required>
+        <option value="">- pilih produk -</option>
+        {% for p in daftar_produk %}
+          <option value="{{ p.id }}" 
+                  data-has-recipe="{{ 1 if p.resep_bahan|length > 0 else 0 }}">
+            {{ p.nama }} (stok: {{ p.stok }})
+          </option>
+        {% endfor %}
+      </select>
+      <div id="manuInfo" class="info-manu" style="display:none;">
+        Produk ini <b>manufaktur</b> (punya resep). 
+        Jika Anda memilih <b>Tambah (IN)</b>, sistem akan <b>memproduksi otomatis</b>: 
+        stok bahan akan <b>berkurang</b> sesuai resep dan stok produk jadi <b>bertambah</b>. 
+        HPP produk jadi dihitung dari biaya bahan.
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Tipe</label>
+          <select id="fTipe" name="tipe" class="control" required>
+            <option value="IN">Tambah (IN)</option>
+            <option value="OUT">Kurangi (OUT)</option>
+          </select>
+        </div>
+        <div>
+          <label>Qty</label>
+          <input id="fQty" name="qty" type="number" min="1" step="1" class="control" required>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Tanggal</label>
+          <input id="fTanggal" name="tanggal" type="date" value="{{ today }}" class="control" required>
+        </div>
+        <div>
+          <label>Referensi (opsional)</label>
+          <input id="fRef" name="referensi" type="text" placeholder="Contoh: PO-001 / PROD-xxx" class="control">
+        </div>
+      </div>
+
+      <label>Catatan (opsional)</label>
+      <input id="fCat" name="catatan" type="text" placeholder="Misal: Penyesuaian / Produksi manual" class="control">
+
+      <!-- Bagian HPP: hanya relevan untuk produk biasa & IN -->
+      <div id="hppBox">
+        <div class="row2">
+          <div>
+            <label>Unit Cost (Rp) — untuk HPP (opsional)</label>
+            <input id="fCost" name="unit_cost" type="number" min="0" step="1" placeholder="0" class="control">
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input id="fUpdHpp" name="update_hpp" type="checkbox" value="1" style="transform:scale(1.1);">
+              <label for="fUpdHpp" style="margin:0; font-size:14px;">Update HPP dari unit cost</label>
+            </div>
+          </div>
+        </div>
+        <div class="pill" style="margin-top:8px; background:#ecfeff; color:#0e7490;">
+          Catatan: Input ini hanya dipakai untuk <b>produk bukan manufaktur</b> saat <b>Tambah (IN)</b>.
+        </div>
+      </div>
+
+    </div>
+    <div class="ft">
+      <button class="btn btn-muted" type="button" onclick="closeStokModal()">Batal</button>
+      <button class="btn btn-primary" type="submit">Simpan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ========== Filter tabel sederhana ==========
+  (function(){
+    const q = document.getElementById('stokSearch');
+    const tbody = document.getElementById('stokTbody');
+    if(!q || !tbody) return;
+    q.addEventListener('input', ()=>{
+      const v = (q.value||'').trim().toLowerCase();
+      tbody.querySelectorAll('tr').forEach(tr=>{
+        const name = tr.getAttribute('data-name')||'';
+        tr.style.display = name.includes(v) ? '' : 'none';
+      });
+    });
+  })();
+
+  // ====== Elemen modal stok (UNIK) ======
+  const stokBackdrop = document.getElementById('stok-backdrop');
+  const stokModal    = document.getElementById('stok-modal');
+  const stokForm     = document.getElementById('stokForm');
+
+  // Field
+  const fProdukId    = document.getElementById('fProdukId');
+  const fProdukSelect= document.getElementById('fProdukSelect');
+  const fTipe        = document.getElementById('fTipe');
+  const fQty         = document.getElementById('fQty');
+  const fTanggal     = document.getElementById('fTanggal');
+  const fRef         = document.getElementById('fRef');
+  const fCat         = document.getElementById('fCat');
+  const fCost        = document.getElementById('fCost');
+  const fUpdHpp      = document.getElementById('fUpdHpp');
+
+  const manuInfo     = document.getElementById('manuInfo');
+  const hppBox       = document.getElementById('hppBox');
+
+  let currentHasRecipe = 0;   // 0/1
+
+  function openStokModal(produkId = null, namaProduk = '', hasRecipe = 0){
+    // set default
+    currentHasRecipe = hasRecipe ? 1 : 0;
+
+    fProdukId.value = produkId? String(produkId) : '';
+    fProdukSelect.value = produkId? String(produkId) : '';
+
+    // set tipe default IN
+    fTipe.value = 'IN';
+    fQty.value = '';
+    fCost.value = '';
+    fUpdHpp.checked = false;
+    fRef.value = '';
+    fCat.value = '';
+
+    // tampilkan info manufaktur bila perlu
+    updateModeUI();
+
+    // tampilkan modal
+    stokBackdrop.classList.add('show');
+    stokBackdrop.setAttribute('aria-hidden','false');
+    stokModal.classList.add('show');
+
+    // fokus ke qty biar cepat input
+    setTimeout(()=> fQty?.focus(), 50);
+  }
+
+  function closeStokModal(){
+    stokBackdrop.classList.remove('show');
+    stokBackdrop.setAttribute('aria-hidden','true');
+    stokModal.classList.remove('show');
+  }
+
+  // Klik backdrop untuk tutup (khusus stokBackdrop saja)
+  stokBackdrop.addEventListener('click', (e)=>{ 
+    if(e.target === stokBackdrop) closeStokModal(); 
+  });
+
+  // ESC untuk tutup modal stok
+  document.addEventListener('keydown', (e)=>{
+    if(e.key==='Escape' && stokBackdrop.classList.contains('show')){
+      closeStokModal();
+    }
+  });
+
+  // Ketika produk dipilih, cek apakah manufaktur (punya resep)
+  fProdukSelect.addEventListener('change', ()=>{
+    const opt = fProdukSelect.options[fProdukSelect.selectedIndex];
+    const hr = opt ? parseInt(opt.getAttribute('data-has-recipe')||'0') : 0;
+    currentHasRecipe = hr;
+    fProdukId.value = fProdukSelect.value || '';
+    updateModeUI();
+  });
+
+  // Ketika tipe berubah (IN/OUT)
+  fTipe.addEventListener('change', updateModeUI);
+
+  // Aturan UI:
+  // - Jika produk manufaktur (currentHasRecipe==1) dan tipe IN → tampilkan info otomatis produksi + sembunyikan HPP box.
+  // - Selain itu, tampilkan HPP box hanya jika tipe == IN (produk biasa).
+  function updateModeUI(){
+    const tipe = fTipe.value;
+    const isManu = currentHasRecipe === 1;
+
+    if(isManu && tipe === 'IN'){
+      manuInfo.style.display = '';
+      hppBox.style.display   = 'none';   // HPP produk jadi dihitung dari bahan, tidak pakai input unit_cost
+    } else {
+      manuInfo.style.display = 'none';
+      // HPP box hanya relevan saat IN (untuk produk biasa)
+      hppBox.style.display   = (tipe === 'IN') ? '' : 'none';
+    }
+  }
+
+  // Submit form (tetap menuju /stok/adjust)
+  stokForm.addEventListener('submit', (e)=>{
+    // validasi ringan
+    if(!fProdukId.value){
+      alert('Pilih produk terlebih dahulu.');
+      e.preventDefault();
+      return;
+    }
+    if(!fQty.value || parseInt(fQty.value) <= 0){
+      alert('Masukkan qty > 0.');
+      e.preventDefault();
+      return;
+    }
+  });
+
+</script>
+{% endblock %}

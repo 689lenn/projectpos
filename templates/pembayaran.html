@@ -80,7 +80,7 @@
             <select id="customer_id" name="customer_id" class="control">
               <option value="">(Tanpa pelanggan)</option>
               {% for c in customers %}
-                <option value="{{ c.id }}">{{ c.nama }} — {{ c.email }}</option>
+                <option value="{{ c.id }}">{{ c.nama }} — {{ c.alamat }}</option>
               {% endfor %}
             </select>
             <div class="help">Kosongkan jika transaksi tanpa pelanggan. <br>Jika <strong>hutang</strong>, pelanggan wajib dipilih.</div>

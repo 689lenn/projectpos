@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Mutasi Stok{% endblock %}
+
+{% block head %}
+<style>
+  .card { background:#fff; border:1px solid #e6e8f0; border-radius:12px; padding:12px; }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; }
+  .control{ padding:8px 10px; border:1px solid #e6e8f0; border-radius:10px; outline:none; }
+  .btn { border:none; border-radius:10px; padding:9px 12px; cursor:pointer; font-weight:700; color:#fff; background:#007bff; }
+  .btn:hover{ filter: brightness(.95); }
+  table { width:100%; border-collapse: collapse; }
+  th, td { border-bottom:1px solid #eef1f5; padding:10px; text-align:left; vertical-align: top; }
+  th { background:#f8fafc; font-weight:800; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; }
+  .in { background:#eafff3; color:#206b3b; border:1px solid #c7f0d7; }
+  .out{ background:#ffecec; color:#7f1d1d; border:1px solid #ffd0d0; }
+  .sum { display:flex; gap:12px; margin: 8px 0 12px; flex-wrap:wrap; }
+  .sum .box { background:#f8fafc; border:1px solid #eef1f5; border-radius:10px; padding:8px 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Mutasi Stok</h1>
+
+<div class="card">
+  <form method="get" class="filters">
+    <div>
+      <label class="small">Mulai</label><br>
+      <input class="control" type="date" name="start" value="{{ start or '' }}">
+    </div>
+    <div>
+      <label class="small">Sampai</label><br>
+      <input class="control" type="date" name="end" value="{{ end or '' }}">
+    </div>
+    <div>
+      <label class="small">Produk</label><br>
+      <select class="control" name="produk_id">
+        <option value="">(Semua)</option>
+        {% for p in produk_all %}
+          <option value="{{ p.id }}" {% if produk_id|int == p.id %}selected{% endif %}>{{ p.nama }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="small">Tipe</label><br>
+      <select class="control" name="tipe">
+        <option value="">(Semua)</option>
+        <option value="IN"  {% if tipe=='IN'  %}selected{% endif %}>IN (Tambah)</option>
+        <option value="OUT" {% if tipe=='OUT' %}selected{% endif %}>OUT (Kurang)</option>
+      </select>
+    </div>
+    <div>
+      <button class="btn" type="submit">Terapkan</button>
+    </div>
+  </form>
+
+  <div class="sum">
+    <div class="box">Total IN: <strong>{{ total_in }}</strong></div>
+    <div class="box">Total OUT: <strong>{{ total_out }}</strong></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Produk</th>
+        <th>Tipe</th>
+        <th>Qty</th>
+        <th>Unit Cost</th>
+        <th>Stok Setelah</th>
+        <th>Ref/Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.tanggal }}</td>
+        <td>
+          <strong>{{ r.produk.nama }}</strong><br>
+          <span class="small">HPP: Rp {{ "{:,}".format(r.produk.hpp or 0) }}</span>
+        </td>
+        <td>
+          {% if r.tipe == 'IN' %}
+            <span class="badge in">IN</span>
+          {% else %}
+            <span class="badge out">OUT</span>
+          {% endif %}
+        </td>
+        <td>{{ r.qty }}</td>
+        <td>
+          {% if r.unit_cost %}Rp {{ "{:,}".format(r.unit_cost) }}{% else %}-{% endif %}
+        </td>
+        <td>{{ r.stok_setelah if r.stok_setelah is not none else '-' }}</td>
+        <td>
+          {% if r.referensi %}<div><strong>Ref:</strong> {{ r.referensi }}</div>{% endif %}
+          {% if r.catatan %}<div class="small">{{ r.catatan }}</div>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center; color:#6b7280;">Belum ada data mutasi.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

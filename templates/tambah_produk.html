@@ -1,207 +1,170 @@
-{% extends "base.html" %} {% block title %}Tambah Produk{% endblock %}
+{% extends "base.html" %}
+{% block title %}Tambah Produk{% endblock %}
 
 {% block head %}
-
 <style>
-  :root{
-    --card-bg:#fff; --border:#e6e8f0; --text:#111827; --muted:#6b7280;
-    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
-    --radius: 12px; --shadow: 0 10px 25px rgba(0,0,0,.06);
-    --shadow-sm: 0 6px 16px rgba(0,0,0,.05);
-  }
-
-  .page-title{ margin:0 0 6px; text-align:center; letter-spacing:.2px; }
-  .subnote{ text-align:center; margin-bottom:14px; color:var(--muted); font-size:13px; }
-
-  .form-card{
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    padding: 16px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .grid{ display:grid; grid-template-columns:1.4fr .9fr; gap:16px; }
-  @media (max-width: 860px){ .grid{ grid-template-columns:1fr; } }
-
-  .form-group{ margin-bottom: 12px; }
-  .label{ display:block; font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600; }
-  .control{
-    width:100%; padding:10px 12px; border:1px solid var(--border);
-    border-radius:10px; font-size:14px; outline:none; background:#fff;
-    transition: box-shadow .15s ease, border-color .15s ease;
-  }
-  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
-  .help{ font-size:12px; color:#6b7280; margin-top:6px; }
-
-  /* Media / Upload */
-  .media{
-    background:#fafbff; border:1px dashed #dfe3ea; border-radius: 12px; padding: 12px;
-  }
-  .media .drop{ font-size:12px; color:#6b7280; margin-bottom: 8px; }
-  .preview-wrap{ display:none; margin-top: 8px; }
-  .preview{ width:100%; max-height: 280px; object-fit: contain; border:1px solid var(--border); border-radius:10px; background:#fff; }
-
-  /* Tabel harga */
-  table.harga-table{
-    width:100%; border-collapse: collapse; margin-top:8px; background:#fff; border:1px solid var(--border);
-    border-radius: 10px; overflow:hidden;
-  }
-  .harga-table th, .harga-table td{
-    padding:10px; border-bottom:1px solid #eef1f5; vertical-align: middle; text-align:left;
-  }
-  .harga-table thead th{ background:#f8fafc; color:#334155; font-weight:700; }
-  .harga-table tbody tr:last-child td{ border-bottom:none; }
-  .harga-table .btn-mini{
-    padding:7px 10px; border:none; border-radius:8px; background:#ef4444; color:#fff; cursor:pointer; font-weight:700;
-  }
-  .harga-add{
-    margin-top:10px; padding:9px 12px; border:none; border-radius:10px; background:#10b981; color:#fff; cursor:pointer; font-weight:700;
-  }
-  .harga-add:hover{ filter: brightness(.95); }
-
-  /* Actions */
-  .actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top: 12px; }
-  .btn{ border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; }
-  .btn-primary{ background: var(--brand); }
-  .btn-primary:hover{ background: var(--brand-hover); }
-  .btn-muted{ background:#6c757d; }
-  .btn-muted:hover{ filter: brightness(.95); }
-
-  /* Aksesibilitas */
-  .btn:focus, .harga-add:focus, .btn-mini:focus{ outline: 2px solid #a6c8ff; outline-offset: 2px; }
-</style>{% endblock %}
+  .wrap{max-width: 920px; margin:0 auto;}
+  .card{background:#fff; border:1px solid #e6e8f0; border-radius:12px; padding:16px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width: 720px){ .grid{grid-template-columns:1fr;} }
+  label{display:block; font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600;}
+  .control{width:100%; padding:10px 12px; border:1px solid #e6e8f0; border-radius:10px; outline:none;}
+  .control:focus{border-color:#cfe3ff; box-shadow:0 0 0 4px rgba(0,123,255,.2);}
+  .actions{display:flex; justify-content:flex-end; gap:10px; margin-top:12px;}
+  .btn{border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer; color:#fff;}
+  .btn-primary{background:#007bff;}
+  .btn-muted{background:#6b7280;}
+  .toggle-row{display:flex; gap:8px; align-items:center; margin:10px 0;}
+  .resep-box{display:none; margin-top:10px; border:1px dashed #cfe3ff; background:#f7fbff; border-radius:12px; padding:12px;}
+  .resep-box.show{display:block;}
+  table{width:100%; border-collapse:collapse;}
+  th,td{border-bottom:1px solid #edf0f5; padding:8px;}
+  th{background:#f9fafb; text-align:left; font-size:13px; color:#6b7280;}
+  .add-row{background:#0ea5e9; color:#fff; border:none; border-radius:10px; padding:8px 12px; font-weight:800; cursor:pointer;}
+  .del-row{background:#ef4444; color:#fff; border:none; border-radius:8px; padding:6px 10px; cursor:pointer;}
+  .hint{font-size:12px; color:#6b7280; margin-top:6px;}
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="wrap">
+  <h1>Tambah Produk</h1>
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <div class="grid">
+        <div>
+          <label>Nama</label>
+          <input class="control" name="nama" required>
 
-<h1 class="page-title">Tambah Produk</h1>
-<p class="subnote">Masukkan informasi produk, kategori, upload foto (opsional), dan set beberapa opsi harga jika diperlukan.</p><div class="form-card">
-  <form action="{{ url_for('produk_tambah') }}" method="POST" enctype="multipart/form-data" novalidate>
-    <div class="grid">
-      <!-- Kolom kiri -->
-      <div>
-        <div class="form-group">
-          <label for="nama" class="label">Nama Produk</label>
-          <input id="nama" type="text" name="nama" class="control" placeholder="Misal: Bantal Premium" required>
-        </div><div class="form-group">
-      <label for="harga" class="label">Harga Utama (Rp)</label>
-      <input id="harga" type="number" name="harga" min="0" class="control" placeholder="Misal: 150000" required>
-      <div class="help">Harga utama (legacy). Jika tidak memilih default harga lain, sistem akan menggunakan harga ini.</div>
-    </div>
+          <label style="margin-top:10px;">Harga (Rp)</label>
+          <input class="control" name="harga" type="number" min="0" required>
 
-    <div class="form-group">
-  <label for="hpp" class="label">HPP (Modal / biaya pokok per unit)</label>
-  <input id="hpp" type="number" name="hpp" min="0" class="control" value="0" required>
-  <div class="help">Digunakan untuk menghitung potensi keuntungan di keranjang.</div>
-</div>
+          <label style="margin-top:10px;">HPP (Rp)</label>
+          <input class="control" name="hpp" type="number" min="0" value="0" required>
 
-    <div class="form-group">
-      <label for="stok" class="label">Stok</label>
-      <input id="stok" type="number" name="stok" min="0" class="control" placeholder="Misal: 25" required>
-    </div>
+          <label style="margin-top:10px;">Stok</label>
+          <input class="control" name="stok" type="number" min="0" required>
+        </div>
+        <div>
+          <label>Kategori</label>
+          <select class="control" name="kategori_id">
+            <option value="">(Tanpa kategori)</option>
+            {% for k in kategori %}
+              <option value="{{ k.id }}">{{ k.nama }}</option>
+            {% endfor %}
+          </select>
 
-    <div class="form-group">
-      <label for="kategori_id" class="label">Kategori</label>
-      <select id="kategori_id" name="kategori_id" class="control">
-        <option value="">(Tanpa kategori)</option>
-        {% for k in kategori %}
-          <option value="{{ k.id }}">{{ k.nama }}</option>
-        {% endfor %}
-      </select>
-    </div>
+          <label style="margin-top:10px;">Foto (opsional)</label>
+          <input class="control" type="file" name="foto" accept="image/*">
 
-    <!-- ====== Multi Harga (opsional) ====== -->
-    <div class="form-group">
-      <label class="label">Harga Lain (opsional)</label>
-      <div class="help">Tambah beberapa harga (contoh: Retail, Grosir, Promo). Pilih salah satu sebagai <strong>default</strong> jika ingin override harga utama saat transaksi.</div>
-
-      <table class="harga-table" id="tblHarga" aria-describedby="hargaHelp">
-        <thead>
-          <tr>
-            <th style="width:40%;">Label</th>
-            <th style="width:35%;">Harga (Rp)</th>
-            <th style="width:15%;">Default?</th>
-            <th style="width:10%;">Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyHarga">
-          <!-- Baris dinamis -->
-        </tbody>
-      </table>
-
-      <div class="help" id="hargaHelp" style="margin-top:6px;">
-        Jika memilih <em>Gunakan harga utama</em>, maka default tetap memakai kolom "Harga Utama" di atas.
+          <!-- Toggle Manufaktur -->
+          <div class="toggle-row">
+            <input id="is_manu" type="checkbox" name="is_manufaktur" value="1" />
+            <label for="is_manu" style="margin:0;">Produk Manufaktur (punya resep bahan)</label>
+          </div>
+        </div>
       </div>
 
-      <div style="margin-top:8px;">
-        <label style="display:flex; align-items:center; gap:8px;">
-          <input type="radio" name="harga_default" value="utama" checked>
-          <span>Gunakan harga utama sebagai default</span>
-        </label>
+      <!-- RESEP -->
+      <div id="resepBox" class="resep-box" aria-hidden="true">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <strong>Resep Bahan</strong>
+          <button type="button" class="add-row" onclick="addRow()">+ Tambah Bahan</button>
+        </div>
+        <div class="hint">
+          Isi <em>Jumlah per Unit</em> dengan angka desimal jika perlu (contoh: <strong>1</strong> atau <strong>0,5</strong>).
+          Titik atau koma sama-sama diterima.
+        </div>
+        <table id="resepTbl">
+          <thead>
+            <tr>
+              <th style="width:55%;">Bahan</th>
+              <th style="width:35%;">Jumlah per Unit</th>
+              <th style="width:10%;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- baris dinamis -->
+          </tbody>
+        </table>
       </div>
 
-      <button type="button" class="harga-add" onclick="tambahBarisHarga()">+ Tambah Harga</button>
-    </div>
-  </div>
-
-  <!-- Kolom kanan: upload -->
-  <div>
-    <div class="media">
-      <div class="drop">Unggah foto produk (opsional)</div>
-      <input id="foto" type="file" name="foto" accept="image/*" class="control" style="padding:8px;">
-      <div class="preview-wrap" id="previewWrap">
-        <img id="previewImg" class="preview" alt="Preview foto" />
+      <div class="actions">
+        <a class="btn btn-muted" href="{{ url_for('produk_list') }}">Batal</a>
+        <button class="btn btn-primary" type="submit">Simpan</button>
       </div>
-      <div class="help">Format: JPG/PNG/WebP. Ukuran ideal ≤ 1MB.</div>
-    </div>
+    </form>
   </div>
 </div>
 
-<div class="actions">
-  <a href="{{ url_for('produk_list') }}" class="btn btn-muted">← Kembali</a>
-  <button type="submit" class="btn btn-primary">💾 Simpan</button>
-</div>
+<script>
+  const chk = document.getElementById('is_manu');
+  const box = document.getElementById('resepBox');
+  const tbody = document.querySelector('#resepTbl tbody');
 
-  </form>
-</div><script>
-  // Tambah baris harga dinamis
-  function tambahBarisHarga(){
-    const tbody = document.getElementById('tbodyHarga');
-    const i = tbody.querySelectorAll('tr').length;
+  function setRequiredInBox(enabled){
+    const fields = box.querySelectorAll('.resep-required');
+    fields.forEach(el => {
+      if (enabled) el.setAttribute('required','required');
+      else el.removeAttribute('required');
+    });
+  }
+
+  function clearRows(){
+    tbody.innerHTML = '';
+  }
+
+  function addRow(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
-        <input type="text" name="harga_label[]" placeholder="Misal: Retail / Grosir / Promo" class="control" />
+        <select name="bahan_id[]" class="control resep-required">
+          <option value="">- Pilih bahan -</option>
+          {% for p in semua_produk %}
+            <option value="{{ p.id }}">{{ p.nama }} (stok: {{ p.stok }})</option>
+          {% endfor %}
+        </select>
       </td>
       <td>
-        <input type="number" name="harga_value[]" min="0" value="0" class="control" />
+        <input class="control resep-required"
+               name="bahan_qty[]"
+               type="text"
+               inputmode="decimal"
+               placeholder="cth: 1 atau 0,5">
       </td>
-      <td style="text-align:center;">
-        <input type="radio" name="harga_default" value="row-${i}" aria-label="Jadikan baris ini sebagai default">
-      </td>
-      <td>
-        <button type="button" class="btn-mini" onclick="hapusBaris(this)">Hapus</button>
-      </td>
+      <td><button type="button" class="del-row" onclick="this.closest('tr').remove()">Hapus</button></td>
     `;
     tbody.appendChild(tr);
+    if (chk.checked) setRequiredInBox(true);
   }
 
-  function hapusBaris(btn){
-    const tr = btn.closest('tr');
-    if(tr){ tr.remove(); }
-  }
+  // Inisialisasi awal
+  (function initManu(){
+    if (chk.checked){
+      box.classList.add('show');
+      box.setAttribute('aria-hidden','false');
+      setRequiredInBox(true);
+      if (tbody.children.length === 0) addRow();
+    } else {
+      box.classList.remove('show');
+      box.setAttribute('aria-hidden','true');
+      setRequiredInBox(false);
+      clearRows();
+    }
+  })();
 
-  // Preview foto
-  const fotoInput = document.getElementById('foto');
-  const previewWrap = document.getElementById('previewWrap');
-  const previewImg  = document.getElementById('previewImg');
-  fotoInput.addEventListener('change', function(){
-    const file = this.files && this.files[0];
-    if(!file){ previewWrap.style.display='none'; previewImg.src=''; return; }
-    const reader = new FileReader();
-    reader.onload = (e) => { previewImg.src = e.target.result; previewWrap.style.display = 'block'; };
-    reader.readAsDataURL(file);
+  chk.addEventListener('change', () => {
+    if(chk.checked){
+      box.classList.add('show');
+      box.setAttribute('aria-hidden','false');
+      setRequiredInBox(true);
+      if (tbody.children.length === 0) addRow();
+    } else {
+      box.classList.remove('show');
+      box.setAttribute('aria-hidden','true');
+      setRequiredInBox(false);
+      clearRows();
+    }
   });
-</script>{% endblock %}
+</script>
+{% endblock %}
