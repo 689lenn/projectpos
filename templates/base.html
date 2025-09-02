@@ -5,37 +5,6 @@
   <title>{% block title %}POS App{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* ===== Floating Cart Button (Bottom Full Width) ===== */
-    .fab-cart{
-      position: fixed; left: 0; right: 0; bottom: 0;
-      padding: 14px 16px;
-      background: var(--brand);
-      color: #fff; text-decoration: none; font-weight: 800;
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      border: none; outline: none;
-      border-top-left-radius: 12px; border-top-right-radius: 12px;
-      box-shadow: 0 -6px 18px rgba(0,0,0,.12);
-      z-index: 950; /* Sidebar & backdrop berada di atas (lihat variabel z-index di :root) */
-    }
-    .fab-badge{
-      background: var(--badge-bg);
-      color: var(--badge-txt);
-      min-width: 22px; height: 22px; padding: 0 8px;
-      border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 800;
-    }
-    .fab-cart{
-      transition: transform .15s ease, filter .2s ease, box-shadow .2s ease;
-    }
-    .fab-cart:hover{
-      filter: brightness(1.05);
-      box-shadow: 0 -8px 24px rgba(0,0,0,.16);
-      transform: scale(1.02);
-    }
-    .fab-cart:active{
-      transform: scale(0.98);
-    }
-
     :root{
       /* Warna & tema */
       --brand: #007bff;
@@ -60,8 +29,8 @@
       --z-header: 1000;
 
       /* Layering */
-      --z-sidebar: 5000;   /* Sidebar di atas FAB */
-      --z-backdrop: 4800;  /* Backdrop di bawah sidebar, tapi di atas FAB */
+      --z-sidebar: 5000;
+      --z-backdrop: 4800;
 
       /* Button & badge */
       --btn-radius: 10px;
@@ -72,7 +41,7 @@
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; font-family: Arial, sans-serif; background:var(--bg); color:var(--txt); }
 
-    /* ===== Header (blok putih atas) ===== */
+    /* ===== Header ===== */
     .app-header{
       position: fixed; top: 0; left: 0; right: 0;
       background: var(--header-bg);
@@ -87,7 +56,7 @@
     }
     .header-left, .header-right { display:flex; align-items:center; gap:10px; }
     .app-title { font-weight:800; letter-spacing:.3px; }
-    .header-spacer{ height: var(--header-h); } /* cegah konten ketutupan header */
+    .header-spacer{ height: var(--header-h); }
 
     /* Hamburger */
     .menu-btn{
@@ -109,7 +78,7 @@
     /* ===== Sidebar ===== */
     .sidebar {
       position: fixed;
-      inset: var(--header-h) auto 0 0; /* mulai di bawah header */
+      inset: var(--header-h) auto 0 0;
       width: var(--sidew);
       background:#343a40; color:#fff;
       transform: translateX(-100%);
@@ -134,17 +103,24 @@
     .side-btn:hover, .side-link:hover { background: var(--muted2); }
     .side-link.active { background:#2f353a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
 
+    /* ✅ Dropdown seragam: pakai .show untuk tampil */
     .dropdown {
       background:#212529; border-radius:8px; padding:6px; display:none;
-      overflow:hidden; transition: height .2s ease, opacity .2s ease;
+      overflow:hidden; transition: opacity .2s ease;
     }
     .dropdown.show { display:block; }
     .dropdown a {
       display:block; color:#e9ecef; text-decoration:none; padding:8px 10px; border-radius:6px;
+      margin: 4px 0;
     }
     .dropdown a:hover { background:#2c3035; }
+    .dropdown a.active { background:#1d4ed8; color:#fff; }
 
-    /* Backdrop: full screen + blur */
+    /* Panah di tombol */
+    .side-btn .chev { display:inline-block; transition: transform .2s ease; }
+    .side-btn.open .chev { transform: rotate(180deg); }
+
+    /* Backdrop */
     .backdrop{
       position: fixed;
       inset: 0;
@@ -157,14 +133,6 @@
       transition: opacity .2s ease;
     }
     .backdrop.show{ display: block; opacity: 1; }
-
-    .badge{
-      display:inline-flex; align-items:center; justify-content:center;
-      min-width: 18px; height: 18px; padding: 0 6px;
-      background: var(--badge-bg); color: var(--badge-txt);
-      border-radius: 999px; font-size: 11px; font-weight: 800;
-      transform: translateY(-1px);
-    }
 
     /* Desktop: sidebar permanen */
     @media (min-width: 992px) {
@@ -191,7 +159,6 @@
 </head>
 <body>
 
-<!-- ===== Header: blok putih atas ===== -->
 <header id="appHeader" class="app-header" role="banner">
   <div class="header-inner">
     <div class="header-left">
@@ -213,13 +180,14 @@
   <!-- Sidebar -->
   <aside id="sidebar" class="sidebar" aria-label="Sidebar" tabindex="-1">
     <h2>Menu</h2>
-
     {% set ep = request.endpoint %}
 
     <!-- Manajemen -->
     <div class="side-group">
       <div class="side-title">Manajemen</div>
-      <button class="side-btn" id="btnManajemen" aria-expanded="false" aria-controls="dropManajemen">⚙️ Manajemen</button>
+      <button class="side-btn" id="btnManajemen" aria-expanded="false" aria-controls="dropManajemen">
+        ⚙️ Manajemen <span class="chev">▾</span>
+      </button>
       <div id="dropManajemen" class="dropdown" aria-hidden="true">
         <a class="{{ 'active' if ep == 'produk_list' else '' }}" href="{{ url_for('produk_list') }}">📦 Produk</a>
         <a class="{{ 'active' if ep == 'kategori_list' else '' }}" href="{{ url_for('kategori_list') }}">🏷️ Kategori</a>
@@ -234,10 +202,12 @@
       <a class="side-link {{ 'active' if ep == 'index' else '' }}" href="{{ url_for('index') }}">🛒 Transaksi</a>
     </div>
 
-    <!-- Laporan (Dropdown seperti Manajemen) -->
+    <!-- Laporan -->
     <div class="side-group">
       <div class="side-title">Laporan</div>
-      <button class="side-btn" id="btnLaporan" aria-expanded="false" aria-controls="dropLaporan">📊 Laporan</button>
+      <button class="side-btn" id="btnLaporan" aria-expanded="false" aria-controls="dropLaporan">
+        📊 Laporan <span class="chev">▾</span>
+      </button>
       <div id="dropLaporan" class="dropdown" aria-hidden="true">
         <a class="{{ 'active' if ep == 'transaksi_list' else '' }}" href="{{ url_for('transaksi_list') }}">📃 Daftar Transaksi</a>
         <a class="{{ 'active' if ep == 'laporan_home' else '' }}" href="{{ url_for('laporan_home') }}">📊 Laporan & Analitik</a>
@@ -246,17 +216,32 @@
     </div>
 
     <!-- Karyawan -->
-<div class="side-group">
-  <div class="side-title">Karyawan</div>
-  <button class="side-btn" id="btnKaryawan" aria-expanded="false" aria-controls="dropKaryawan">👥 Karyawan</button>
-  <div id="dropKaryawan" class="dropdown" aria-hidden="true">
-    <a class="{{ 'active' if ep == 'karyawan_list' else '' }}" href="{{ url_for('karyawan_list') }}">👤 Manajemen Karyawan</a>
-    <a class="{{ 'active' if ep == 'pekerjaan_list' else '' }}" href="{{ url_for('pekerjaan_list') }}">🧰 Pekerjaan</a>
-    <a class="{{ 'active' if ep == 'produksi_karyawan' else '' }}" href="{{ url_for('produksi_karyawan') }}">📝 Produksi Harian</a>
-    <a class="{{ 'active' if ep == 'gajian_view' else '' }}" href="{{ url_for('gajian_view') }}">💸 Gajian</a>
-  </div>
-</div>
-    <!-- Rooms (opsional) -->
+    <div class="side-group">
+      <div class="side-title">Karyawan</div>
+      <button class="side-btn" id="btnKaryawan" aria-expanded="false" aria-controls="dropKaryawan">
+        👥 Karyawan <span class="chev">▾</span>
+      </button>
+      <div id="dropKaryawan" class="dropdown" aria-hidden="true">
+        <a class="{{ 'active' if ep == 'karyawan_list' else '' }}" href="{{ url_for('karyawan_list') }}">👤 Manajemen Karyawan</a>
+        <a class="{{ 'active' if ep == 'pekerjaan_list' else '' }}" href="{{ url_for('pekerjaan_list') }}">🧰 Pekerjaan</a>
+        <a class="{{ 'active' if ep == 'produksi_karyawan' else '' }}" href="{{ url_for('produksi_karyawan') }}">📝 Produksi Harian</a>
+        <a class="{{ 'active' if ep == 'gajian_view' else '' }}" href="{{ url_for('gajian_view') }}">💸 Gajian</a>
+      </div>
+    </div>
+
+    <!-- Setting -->
+    <div class="side-group">
+      <div class="side-title">Setting</div>
+      <button class="side-btn" id="btnSetting" aria-expanded="false" aria-controls="dropSetting">
+        ⚙️ Setting <span class="chev">▾</span>
+      </button>
+      <div id="dropSetting" class="dropdown" aria-hidden="true">
+        <a class="{{ 'active' if ep == 'settings_data' else '' }}" href="{{ url_for('settings_data') }}">📦 Ekspor/Impor Data</a>
+        <a class="{{ 'active' if ep == 'settings_report' else '' }}" href="{{ url_for('settings_report') }}">📈 Ekspor Laporan Transaksi</a>
+      </div>
+    </div>
+
+    <!-- (opsional) Rooms -->
     <!--
     <div class="side-group">
       <div class="side-title">Rooms</div>
@@ -284,39 +269,7 @@
 </div>
 
 <script>
-
-  // ====== Karyawan ============
-
-   // ... (script sidebar yang sudah ada)
-  const btnKaryawan  = document.getElementById('btnKaryawan');
-  const dropKaryawan = document.getElementById('dropKaryawan');
-
-  function closeDropKaryawan(){
-    if(!dropKaryawan) return;
-    dropKaryawan.classList.remove('show');
-    btnKaryawan?.setAttribute('aria-expanded','false');
-    dropKaryawan.setAttribute('aria-hidden','true');
-    try{ localStorage.setItem('drop:karyawan','0'); }catch(e){}
-  }
-  function openDropKaryawan(){
-    if(!dropKaryawan) return;
-    dropKaryawan.classList.add('show');
-    btnKaryawan?.setAttribute('aria-expanded','true');
-    dropKaryawan.setAttribute('aria-hidden','false');
-    try{ localStorage.setItem('drop:karyawan','1'); }catch(e){}
-  }
-  btnKaryawan?.addEventListener('click', ()=>{
-    const exp = btnKaryawan.getAttribute('aria-expanded') === 'true';
-    exp ? closeDropKaryawan() : openDropKaryawan();
-  });
-  (function restoreDK(){
-    try{
-      const st = localStorage.getItem('drop:karyawan');
-      if(st === '1') openDropKaryawan();
-    }catch(e){}
-  })();
-  
-  // ====== Header spacer sync ======
+  // ===== Header spacer sync =====
   (function(){
     const header = document.getElementById('appHeader');
     const spacer = document.getElementById('headerSpacer');
@@ -329,19 +282,12 @@
     window.addEventListener('resize', () => requestAnimationFrame(updateHeaderHeight));
   })();
 
-  // ====== Sidebar logic ======
+  // ===== Sidebar logic =====
   const body        = document.body;
   const sidebar     = document.getElementById('sidebar');
   const mainContent = document.getElementById('mainContent');
   const backdrop    = document.getElementById('sidebarBackdrop');
   const menuBtn     = document.getElementById('menuBtn');
-
-  const btnManajemen   = document.getElementById('btnManajemen');
-  const dropManajemen  = document.getElementById('dropManajemen');
-
-  // Laporan
-  const btnLaporan  = document.getElementById('btnLaporan');
-  const dropLaporan = document.getElementById('dropLaporan');
 
   function openSidebar(){
     sidebar.classList.add('show');
@@ -357,94 +303,83 @@
     backdrop.setAttribute('aria-hidden', 'true');
     menuBtn?.setAttribute('aria-expanded', 'false');
     body.classList.remove('sidebar-open');
-    // Tutup semua dropdown
-    closeDropManajemen();
-    closeDropLaporan();
+
+    // Tutup semua dropdown saat sidebar ditutup (mobile)
+    closeDrop('Manajemen');
+    closeDrop('Laporan');
+    closeDrop('Karyawan');
+    closeDrop('Setting');
   }
   function toggleSidebar(){
     if (sidebar.classList.contains('show')) closeSidebar(); else openSidebar();
   }
-
   menuBtn?.addEventListener('click', toggleSidebar);
   backdrop?.addEventListener('click', closeSidebar);
   mainContent?.addEventListener('click', () => { if (sidebar.classList.contains('show')) closeSidebar(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && sidebar.classList.contains('show')){ closeSidebar(); menuBtn?.focus(); } });
 
-  document.addEventListener('keydown', (e)=>{
-    if(e.key === 'Escape' && sidebar.classList.contains('show')){
-      closeSidebar();
-      menuBtn?.focus();
+  // ===== Dropdown helper (seragam) =====
+  function setupDropdown(btnId, dropId, storageKey){
+    const btn  = document.getElementById(btnId);
+    const drop = document.getElementById(dropId);
+    if(!btn || !drop) return;
+
+    function open(){
+      // tutup dropdown lain biar rapi
+      document.querySelectorAll('.dropdown.show').forEach(d=>{
+        if(d === drop) return;
+        d.classList.remove('show');
+        const linkBtn = d.previousElementSibling;
+        if(linkBtn && linkBtn.classList.contains('side-btn')){
+          linkBtn.classList.remove('open');
+          linkBtn.setAttribute('aria-expanded','false');
+        }
+        d.setAttribute('aria-hidden','true');
+      });
+
+      btn.classList.add('open');
+      btn.setAttribute('aria-expanded','true');
+      drop.classList.add('show');
+      drop.setAttribute('aria-hidden','false');
+      try{ localStorage.setItem(storageKey,'1'); }catch(e){}
     }
-  });
-
-  // ====== Dropdown Manajemen ======
-  function closeDropManajemen() {
-    if(!dropManajemen) return;
-    dropManajemen.classList.remove('show');
-    btnManajemen?.setAttribute('aria-expanded', 'false');
-    dropManajemen.setAttribute('aria-hidden', 'true');
-    try{ localStorage.setItem('drop:manajemen', '0'); }catch(e){}
-  }
-  function openDropManajemen() {
-    if(!dropManajemen) return;
-    dropManajemen.classList.add('show');
-    btnManajemen?.setAttribute('aria-expanded', 'true');
-    dropManajemen.setAttribute('aria-hidden', 'false');
-    try{ localStorage.setItem('drop:manajemen', '1'); }catch(e){}
-  }
-  btnManajemen?.addEventListener('click', () => {
-    const expanded = btnManajemen.getAttribute('aria-expanded') === 'true';
-    expanded ? closeDropManajemen() : openDropManajemen();
-  });
-
-  // ====== Dropdown Laporan ======
-  function closeDropLaporan() {
-    if(!dropLaporan) return;
-    dropLaporan.classList.remove('show');
-    btnLaporan?.setAttribute('aria-expanded', 'false');
-    dropLaporan.setAttribute('aria-hidden', 'true');
-    try{ localStorage.setItem('drop:laporan', '0'); }catch(e){}
-  }
-  function openDropLaporan() {
-    if(!dropLaporan) return;
-    dropLaporan.classList.add('show');
-    btnLaporan?.setAttribute('aria-expanded', 'true');
-    dropLaporan.setAttribute('aria-hidden', 'false');
-    try{ localStorage.setItem('drop:laporan', '1'); }catch(e){}
-  }
-  btnLaporan?.addEventListener('click', () => {
-    const expanded = btnLaporan.getAttribute('aria-expanded') === 'true';
-    expanded ? closeDropLaporan() : openDropLaporan();
-  });
-
-  // Tutup dropdown jika klik area lain di dalam sidebar (bukan tombol/isinya)
-  document.addEventListener('click', (e) => {
-    if(!sidebar.contains(e.target)) return;
-
-    // Manajemen
-    const onBtnM  = btnManajemen && btnManajemen.contains(e.target);
-    const inDropM = dropManajemen && dropManajemen.contains(e.target);
-
-    // Laporan
-    const onBtnL  = btnLaporan && btnLaporan.contains(e.target);
-    const inDropL = dropLaporan && dropLaporan.contains(e.target);
-
-    if (!onBtnM && !inDropM && !onBtnL && !inDropL){
-      closeDropManajemen();
-      closeDropLaporan();
+    function close(){
+      btn.classList.remove('open');
+      btn.setAttribute('aria-expanded','false');
+      drop.classList.remove('show');
+      drop.setAttribute('aria-hidden','true');
+      try{ localStorage.setItem(storageKey,'0'); }catch(e){}
     }
-  });
+    btn.addEventListener('click', ()=> {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      expanded ? close() : open();
+    });
 
-  // Pulihkan status dropdown dari localStorage
-  (function restoreDropdowns(){
-    try {
-      const stM = localStorage.getItem('drop:manajemen');
-      if(stM === '1') openDropManajemen();
-    } catch(e){}
-    try {
-      const stL = localStorage.getItem('drop:laporan');
-      if(stL === '1') openDropLaporan();
-    } catch(e){}
-  })();
+    // Auto-open bila ada link active di dalamnya
+    const active = drop.querySelector('a.active');
+    const st = (()=>{
+      try { return localStorage.getItem(storageKey); }catch(e){ return null; }
+    })();
+    if(active || st === '1') open();
+
+    return { open, close };
+  }
+
+  // Inisialisasi dropdown
+  const dMan = setupDropdown('btnManajemen', 'dropManajemen', 'drop:manajemen');
+  const dLap = setupDropdown('btnLaporan',   'dropLaporan',   'drop:laporan');
+  const dKar = setupDropdown('btnKaryawan',  'dropKaryawan',  'drop:karyawan');
+  const dSet = setupDropdown('btnSetting',   'dropSetting',   'drop:setting');
+
+  // Utility menutup by name
+  function closeDrop(name){
+    switch(name){
+      case 'Manajemen': dMan?.close && dMan.close(); break;
+      case 'Laporan':   dLap?.close && dLap.close(); break;
+      case 'Karyawan':  dKar?.close && dKar.close(); break;
+      case 'Setting':   dSet?.close && dSet.close(); break;
+    }
+  }
 </script>
 
 {% block scripts %}{% endblock %}

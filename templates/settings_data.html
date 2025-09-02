@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Ekspor / Impor Data{% endblock %}
+
+{% block head %}
+<style>
+  .wrap{max-width:920px;margin:0 auto;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;}
+  h2{margin:0 0 10px 0;font-size:18px;font-weight:800;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width: 720px){ .grid{grid-template-columns:1fr;} }
+  .btn{border:none;border-radius:10px;padding:10px 12px;color:#fff;background:#1d4ed8;cursor:pointer;font-weight:800;}
+  .btn:hover{filter:brightness(.95);}
+  .btn-muted{background:#6b7280;text-decoration:none;display:inline-flex;align-items:center;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;}
+  .control{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;outline:none;}
+  .label{display:block;font-size:12px;color:#6b7280;font-weight:700;margin-bottom:6px;}
+  .muted{color:#6b7280;font-size:12px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h1>Ekspor / Impor Data Master</h1>
+
+  <div class="card">
+    <h2>Ekspor Data</h2>
+    <div class="row">
+      <form method="post">
+        <input type="hidden" name="action" value="export_produk">
+        <button class="btn" type="submit">⬇️ Ekspor Produk (CSV)</button>
+      </form>
+      <form method="post">
+        <input type="hidden" name="action" value="export_kategori">
+        <button class="btn" type="submit">⬇️ Ekspor Kategori (CSV)</button>
+      </form>
+      <form method="post">
+        <input type="hidden" name="action" value="export_customer">
+        <button class="btn" type="submit">⬇️ Ekspor Customer (CSV)</button>
+      </form>
+    </div>
+    <div class="muted" style="margin-top:8px;">
+      Format CSV sesuai header yang akan diunduh (lihat baris teratas file).
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Impor Data</h2>
+    <div class="grid">
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="import_produk">
+        <label class="label">Impor Produk (CSV)</label>
+        <input class="control" type="file" name="file" accept=".csv" required>
+        <div class="muted" style="margin:8px 0;">
+          Kolom: <code>id, nama, harga, hpp, stok, kategori, is_manufaktur, foto</code> (id opsional, kategori nama)
+        </div>
+        <button class="btn" type="submit">⬆️ Impor Produk</button>
+      </form>
+
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="import_kategori">
+        <label class="label">Impor Kategori (CSV)</label>
+        <input class="control" type="file" name="file" accept=".csv" required>
+        <div class="muted" style="margin:8px 0;">
+          Kolom: <code>id, nama</code> (id opsional)
+        </div>
+        <button class="btn" type="submit">⬆️ Impor Kategori</button>
+      </form>
+
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="import_customer">
+        <label class="label">Impor Customer (CSV)</label>
+        <input class="control" type="file" name="file" accept=".csv" required>
+        <div class="muted" style="margin:8px 0;">
+          Kolom: <code>id, nama, email, no_telepon, alamat</code> (id opsional)
+        </div>
+        <button class="btn" type="submit">⬆️ Impor Customer</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

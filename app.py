@@ -5,6 +5,8 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import inspect, text
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
+from flask import make_response
+import io, csv
 import os, secrets, string
 import math
 
@@ -508,7 +510,11 @@ def inject_globals():
     room = get_current_room()
     cart = get_cart_dict_for_template()
     count = sum(item.get("jumlah", 0) for item in cart.values())
-    return {"current_room": room, "cart_count": count}
+    try:
+        ep = request.endpoint
+    except Exception:
+        ep = None
+    return {"current_room": room, "cart_count": count, "ep": ep}
 
 # ==================== HALAMAN UTAMA ====================
 @app.route("/")
@@ -856,17 +862,27 @@ def pembayaran():
 
 # ==================== LAPORAN & ANALITIK ====================
 def compute_laporan_periodik(start_str: str, end_str: str, status: str):
+    """
+    Hitung ringkasan + daftar transaksi (drill-down) untuk laporan periodik.
+    Tambahan: perhitungan Laba (approx) = total - Σ(qty * HPP produk saat ini).
+    """
     def sisa_of(t):
         bayar = t.bayar or 0
         return max(0, (t.total or 0) - bayar)
 
-    q = Transaksi.query.filter(
-        Transaksi.tanggal >= start_str,
-        Transaksi.tanggal <= end_str
-    ).order_by(Transaksi.id.desc())
+    # Ambil transaksi pada range tanggal (kolom tanggal = string 'YYYY-MM-DD')
+    q = (Transaksi.query
+         .filter(Transaksi.tanggal >= start_str,
+                 Transaksi.tanggal <= end_str)
+         .order_by(Transaksi.id.desc())
+         .options(
+             joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk),
+             joinedload(Transaksi.customer)
+         ))
 
     trx_all = q.all()
 
+    # Filter status
     if status == 'hutang':
         trx_filtered = [t for t in trx_all if sisa_of(t) > 0]
     elif status == 'lunas':
@@ -874,19 +890,32 @@ def compute_laporan_periodik(start_str: str, end_str: str, status: str):
     else:
         trx_filtered = trx_all
 
+    # Ringkasan
     total_trx       = len(trx_filtered)
     total_penjualan = sum((t.total or 0) for t in trx_filtered)
     total_dibayar   = sum((t.bayar or 0) for t in trx_filtered)
     total_sisa      = sum(sisa_of(t) for t in trx_filtered)
-    avg_ticket      = (total_penjualan / total_trx) if total_trx > 0 else 0
 
+    # HPP cost & laba (approx)
+    total_hpp_cost  = 0
     total_item_terjual = 0
-    for t in trx_filtered:
-        for it in t.item_transaksi:
-            total_item_terjual += (it.jumlah or 0)
 
     drill_rows = []
     for t in trx_filtered:
+        # agregasi item per transaksi
+        trx_cost_hpp = 0
+        trx_item_count = 0
+        for it in t.item_transaksi:
+            qty = it.jumlah or 0
+            p = it.produk
+            hpp_now = int(p.hpp or 0) if p else 0
+            trx_cost_hpp += (hpp_now * qty)
+            trx_item_count += qty
+
+        trx_laba = (t.total or 0) - trx_cost_hpp
+        total_hpp_cost += trx_cost_hpp
+        total_item_terjual += trx_item_count
+
         sisa = sisa_of(t)
         status_lbl = "HUTANG" if sisa > 0 else "LUNAS"
         drill_rows.append({
@@ -894,20 +923,41 @@ def compute_laporan_periodik(start_str: str, end_str: str, status: str):
             "tanggal": t.tanggal,
             "customer": (t.customer.nama if t.customer else "-"),
             "total": t.total or 0,
+            "hpp_cost": trx_cost_hpp,
+            "laba": trx_laba,
             "bayar": t.bayar or 0,
             "sisa": sisa,
             "status": status_lbl
         })
 
+    total_laba = total_penjualan - total_hpp_cost
+
     return {
         "total_trx": total_trx,
         "total_penjualan": total_penjualan,
+        "total_hpp_cost": total_hpp_cost,
+        "total_laba": total_laba,
         "total_dibayar": total_dibayar,
         "total_sisa": total_sisa,
-        "avg_ticket": avg_ticket,
+        "avg_ticket": (total_penjualan / total_trx) if total_trx > 0 else 0,
         "total_item_terjual": total_item_terjual,
         "drill_rows": drill_rows,
     }
+
+def _trx_cost_and_profit(trxs):
+    """Hitung total HPP (Σ qty*hpp) dan Laba (Σ total - Σ hpp) untuk kumpulan transaksi."""
+    total_hpp = 0
+    total_laba = 0
+    for t in trxs:
+        cost = 0
+        for it in t.item_transaksi:
+            p = it.produk
+            hpp = int(p.hpp or 0) if p else 0
+            qty = int(it.jumlah or 0)
+            cost += (hpp * qty)
+        total_hpp += cost
+        total_laba += (int(t.total or 0) - cost)
+    return total_hpp, total_laba
 
 @app.route('/laporan', endpoint='laporan_home')
 def laporan_home():
@@ -924,34 +974,63 @@ def laporan_home():
 
     ctx = {"current_view": view}
 
+    # ====== OVERVIEW ======
     if view == 'overview':
-        qs_today = Transaksi.query.filter(Transaksi.tanggal == today_s).order_by(Transaksi.id.desc()).all()
+        qs_today = (Transaksi.query
+                    .filter(Transaksi.tanggal == today_s)
+                    .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                    .order_by(Transaksi.id.desc()).all())
         omzet_today = sum((t.total or 0) for t in qs_today)
         trx_today   = len(qs_today)
+        total_hpp_today, laba_today = _trx_cost_and_profit(qs_today)
 
-        qs_last7 = Transaksi.query.filter(Transaksi.tanggal >= last7_start_s,
-                                          Transaksi.tanggal <= today_s).all()
+        qs_last7 = (Transaksi.query
+                    .filter(Transaksi.tanggal >= last7_start_s,
+                            Transaksi.tanggal <= today_s)
+                    .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                    .all())
         omzet_last7 = sum((t.total or 0) for t in qs_last7)
+        total_hpp_last7, laba_last7 = _trx_cost_and_profit(qs_last7)
 
-        qs_month = Transaksi.query.filter(Transaksi.tanggal >= month_start_s,
-                                          Transaksi.tanggal <= today_s).all()
+        qs_month = (Transaksi.query
+                    .filter(Transaksi.tanggal >= month_start_s,
+                            Transaksi.tanggal <= today_s)
+                    .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                    .all())
         omzet_month = sum((t.total or 0) for t in qs_month)
+        total_hpp_month, laba_month = _trx_cost_and_profit(qs_month)
 
+        # Hutang Outstanding + daftar hutang terbaru (untuk tabel)
         qs_hutang = Transaksi.query.filter(Transaksi.status == 'HUTANG').order_by(Transaksi.id.desc()).all()
-        total_hutang_outstanding = sum((t.sisa or max(0, (t.total or 0) - (t.bayar or 0))) for t in qs_hutang)
-        count_hutang_outstanding = sum(1 for _ in qs_hutang)
+        total_hutang_outstanding = sum(max(0, (t.sisa or ((t.total or 0)-(t.bayar or 0)))) for t in qs_hutang)
+        count_hutang_outstanding = len(qs_hutang)
+        hutang_terbaru = (Transaksi.query
+                          .filter(Transaksi.status == 'HUTANG')
+                          .order_by(Transaksi.id.desc())
+                          .limit(8)
+                          .options(joinedload(Transaksi.customer))
+                          .all())
 
+        # Series 7 hari (Omzet & Laba per hari)
         series_labels = []
-        series_values = []
+        series_omzet = []
+        series_laba  = []
         day_cursor = last7_start
         for _ in range(7):
             d_s = day_cursor.strftime("%Y-%m-%d")
-            rows = Transaksi.query.filter(Transaksi.tanggal == d_s).all()
-            s = sum((t.total or 0) for t in rows)
+            rows = (Transaksi.query
+                    .filter(Transaksi.tanggal == d_s)
+                    .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                    .all())
+            s_omzet = sum((t.total or 0) for t in rows)
+            _, s_laba = _trx_cost_and_profit(rows)
+
             series_labels.append(day_cursor.strftime("%d/%m"))
-            series_values.append(int(s))
+            series_omzet.append(int(s_omzet))
+            series_laba.append(int(s_laba))
             day_cursor += timedelta(days=1)
 
+        # Top produk 30 hari (qty) → siapkan juga array untuk chart
         top_map = {}
         trs_30 = (Transaksi.query.filter(Transaksi.tanggal >= last30_start_s,
                                          Transaksi.tanggal <= today_s)
@@ -960,45 +1039,62 @@ def laporan_home():
         for t in trs_30:
             for it in t.item_transaksi:
                 p = it.produk
-                if not p:
+                if not p: 
                     continue
                 pid = p.id
                 if pid not in top_map:
                     top_map[pid] = {"nama": p.nama, "qty": 0}
                 top_map[pid]["qty"] += (it.jumlah or 0)
         top_produk_30 = sorted(top_map.values(), key=lambda x: x["qty"], reverse=True)[:5]
+        top30_names = [x["nama"] for x in top_produk_30]
+        top30_qtys  = [x["qty"]  for x in top_produk_30]
 
+        # Transaksi hari ini (tabel)
         trx_today_rows = (Transaksi.query
                           .filter(Transaksi.tanggal == today_s)
                           .order_by(Transaksi.id.desc())
                           .options(joinedload(Transaksi.customer))
                           .all())
 
-        hutang_terbaru = (Transaksi.query
-                          .filter(Transaksi.status == 'HUTANG')
-                          .order_by(Transaksi.id.desc())
-                          .limit(8)
-                          .options(joinedload(Transaksi.customer))
-                          .all())
+        # Distribusi dibayar vs sisa (hari ini)
+        paid_today  = sum((t.bayar or 0) for t in qs_today)
+        sisa_today  = sum(max(0, (t.total or 0) - (t.bayar or 0)) for t in qs_today)
 
         ctx.update({
             "today": today,
-            "omzet_today": omzet_today,
-            "trx_today": trx_today,
-            "omzet_last7": omzet_last7,
-            "omzet_month": omzet_month,
-            "total_hutang_outstanding": total_hutang_outstanding,
-            "count_hutang_outstanding": count_hutang_outstanding,
-            "series_labels": series_labels,
-            "series_values": series_values,
-            "top_produk_30": top_produk_30,
-            "trx_today_rows": trx_today_rows,
-            "hutang_terbaru": hutang_terbaru,
             "last7_start": last7_start,
             "month_start": month_start,
+
+            "omzet_today": omzet_today,
+            "trx_today": trx_today,
+            "laba_today": laba_today,
+
+            "omzet_last7": omzet_last7,
+            "laba_last7": laba_last7,
+
+            "omzet_month": omzet_month,
+            "laba_month": laba_month,
+
+            "total_hutang_outstanding": total_hutang_outstanding,
+            "count_hutang_outstanding": count_hutang_outstanding,
+
+            "series_labels": series_labels,
+            "series_omzet": series_omzet,
+            "series_laba": series_laba,
+
+            "top_produk_30": top_produk_30,  # untuk tabel
+            "top30_names": top30_names,      # untuk chart
+            "top30_qtys": top30_qtys,        # untuk chart
+
+            "trx_today_rows": trx_today_rows,
+            "hutang_terbaru": hutang_terbaru,
+
+            "paid_today": paid_today,
+            "sisa_today": sisa_today,
         })
         return render_template('laporan_home.html', **ctx)
 
+    # ====== PERIODIK ======
     if view == 'periodik':
         default_start = (today - timedelta(days=6)).strftime("%Y-%m-%d")
         default_end   = today.strftime("%Y-%m-%d")
@@ -1008,20 +1104,240 @@ def laporan_home():
         status    = request.args.get('status', 'all')  # all|lunas|hutang
 
         data = compute_laporan_periodik(start_str, end_str, status)
+
+        # Data untuk grafik periodik (Omzet & Laba per hari)
+        period_labels = []
+        period_omzet  = []
+        period_laba   = []
+        dt_start = datetime.strptime(start_str, "%Y-%m-%d").date()
+        dt_end   = datetime.strptime(end_str, "%Y-%m-%d").date()
+        cur = dt_start
+        while cur <= dt_end:
+            d_s = cur.strftime("%Y-%m-%d")
+            rows = (Transaksi.query
+                    .filter(Transaksi.tanggal == d_s)
+                    .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                    .all())
+            # filter status
+            if status == 'hutang':
+                rows = [t for t in rows if max(0,(t.total or 0)-(t.bayar or 0)) > 0]
+            elif status == 'lunas':
+                rows = [t for t in rows if max(0,(t.total or 0)-(t.bayar or 0)) == 0]
+
+            s_omzet = sum((t.total or 0) for t in rows)
+            _, s_laba = _trx_cost_and_profit(rows)
+
+            period_labels.append(cur.strftime("%d/%m"))
+            period_omzet.append(int(s_omzet))
+            period_laba.append(int(s_laba))
+            cur += timedelta(days=1)
+
+        # Distribusi dibayar vs sisa (periode)
+        qs_period = (Transaksi.query
+                     .filter(Transaksi.tanggal >= start_str,
+                             Transaksi.tanggal <= end_str)
+                     .all())
+        if status == 'hutang':
+            qs_period = [t for t in qs_period if max(0,(t.total or 0)-(t.bayar or 0)) > 0]
+        elif status == 'lunas':
+            qs_period = [t for t in qs_period if max(0,(t.total or 0)-(t.bayar or 0)) == 0]
+
+        paid_sum = sum((t.bayar or 0) for t in qs_period)
+        sisa_sum = sum(max(0, (t.total or 0) - (t.bayar or 0)) for t in qs_period)
+
+        # Top produk periode (qty)
+        top_map_p = {}
+        trs_period = (Transaksi.query
+                      .filter(Transaksi.tanggal >= start_str,
+                              Transaksi.tanggal <= end_str)
+                      .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                      .all())
+        if status == 'hutang':
+            trs_period = [t for t in trs_period if max(0,(t.total or 0)-(t.bayar or 0)) > 0]
+        elif status == 'lunas':
+            trs_period = [t for t in trs_period if max(0,(t.total or 0)-(t.bayar or 0)) == 0]
+
+        for t in trs_period:
+            for it in t.item_transaksi:
+                p = it.produk
+                if not p:
+                    continue
+                pid = p.id
+                if pid not in top_map_p:
+                    top_map_p[pid] = {"nama": p.nama, "qty": 0}
+                top_map_p[pid]["qty"] += (it.jumlah or 0)
+        top_sorted_p = sorted(top_map_p.values(), key=lambda x: x["qty"], reverse=True)[:7]
+        top_names_p = [x["nama"] for x in top_sorted_p]
+        top_qtys_p  = [x["qty"] for x in top_sorted_p]
+
         ctx.update({
+            "current_view": "periodik",
             "start": start_str,
             "end": end_str,
             "status": status,
-            **data
+            **data,
+
+            "period_labels": period_labels,
+            "period_omzet": period_omzet,
+            "period_laba": period_laba,
+
+            "paid_sum": paid_sum,
+            "sisa_sum": sisa_sum,
+
+            "top_names_p": top_names_p,
+            "top_qtys_p": top_qtys_p,
         })
         return render_template('laporan_home.html', **ctx)
 
     ctx["current_view"] = "overview"
     return render_template('laporan_home.html', **ctx)
 
+    # ===== Ambil transaksi dengan item & produk (supaya bisa hitung laba approx) =====
+    def fetch_range(start_s, end_s):
+        rows = (Transaksi.query
+                .filter(Transaksi.tanggal >= start_s, Transaksi.tanggal <= end_s)
+                .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                .all())
+        total = sum((t.total or 0) for t in rows)
+        hpp_cost = 0
+        for t in rows:
+            for it in t.item_transaksi:
+                p = it.produk
+                hpp_now = int(p.hpp or 0) if p else 0
+                hpp_cost += (hpp_now * (it.jumlah or 0))
+        laba = total - hpp_cost
+        return total, laba
+
+    # Hari ini
+    qs_today = (Transaksi.query
+                .filter(Transaksi.tanggal == today_s)
+                .order_by(Transaksi.id.desc())
+                .options(joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk))
+                .all())
+    omzet_today = sum((t.total or 0) for t in qs_today)
+    # Laba hari ini
+    hpp_today_cost = 0
+    for t in qs_today:
+        for it in t.item_transaksi:
+            p = it.produk
+            hpp_now = int(p.hpp or 0) if p else 0
+            hpp_today_cost += (hpp_now * (it.jumlah or 0))
+    laba_today = omzet_today - hpp_today_cost
+    trx_today = len(qs_today)
+
+    # 7 hari terakhir
+    omzet_last7, laba_last7 = fetch_range(last7_start_s, today_s)
+    # Bulan ini
+    omzet_month, laba_month = fetch_range(month_start_s, today_s)
+
+    # Hutang outstanding
+    qs_hutang = (Transaksi.query
+                 .filter(Transaksi.status == 'HUTANG')
+                 .order_by(Transaksi.id.desc())
+                 .options(joinedload(Transaksi.customer))
+                 .all())
+    total_hutang_outstanding = sum((t.sisa or max(0, (t.total or 0) - (t.bayar or 0))) for t in qs_hutang)
+    count_hutang_outstanding = sum(1 for _ in qs_hutang)
+
+    # Mini timeseries omzet 7 hari (untuk grafik kecil)
+    series_labels = []
+    series_values = []
+    day_cursor = last7_start
+    for _ in range(7):
+        d_s = day_cursor.strftime("%Y-%m-%d")
+        rows = (Transaksi.query
+                .filter(Transaksi.tanggal == d_s)
+                .all())
+        s = sum((t.total or 0) for t in rows)
+        series_labels.append(day_cursor.strftime("%d/%m"))
+        series_values.append(int(s))
+        day_cursor += timedelta(days=1)
+
+    # Top produk 30 hari via qty
+    last30_start = today - timedelta(days=29)
+    last30_start_s = last30_start.strftime("%Y-%m-%d")
+    top_map = {}
+    trs_30 = (Transaksi.query
+              .filter(Transaksi.tanggal >= last30_start_s,
+                      Transaksi.tanggal <= today_s)
+              .options(
+                  joinedload(Transaksi.item_transaksi).joinedload(ItemTransaksi.produk)
+              )
+              .all())
+    for t in trs_30:
+        for it in t.item_transaksi:
+            p = it.produk
+            if not p:
+                continue
+            pid = p.id
+            if pid not in top_map:
+                top_map[pid] = {"nama": p.nama, "qty": 0}
+            top_map[pid]["qty"] += (it.jumlah or 0)
+    top_produk_30 = sorted(top_map.values(), key=lambda x: x["qty"], reverse=True)[:5]
+
+    # Daftar transaksi hari ini (drill)
+    trx_today_rows = (Transaksi.query
+                      .filter(Transaksi.tanggal == today_s)
+                      .order_by(Transaksi.id.desc())
+                      .options(joinedload(Transaksi.customer))
+                      .all())
+
+    # Hutang outstanding terbaru (limit 8)
+    hutang_terbaru = (Transaksi.query
+                      .filter(Transaksi.status == 'HUTANG')
+                      .order_by(Transaksi.id.desc())
+                      .limit(8)
+                      .options(joinedload(Transaksi.customer))
+                      .all())
+
+    ctx.update({
+        "today": today,
+        "omzet_today": omzet_today,
+        "laba_today": laba_today,
+        "trx_today": trx_today,
+
+        "omzet_last7": omzet_last7,
+        "laba_last7": laba_last7,
+
+        "omzet_month": omzet_month,
+        "laba_month": laba_month,
+
+        "total_hutang_outstanding": total_hutang_outstanding,
+        "count_hutang_outstanding": count_hutang_outstanding,
+        "series_labels": series_labels,
+        "series_values": series_values,
+        "top_produk_30": top_produk_30,
+        "trx_today_rows": trx_today_rows,
+        "hutang_terbaru": hutang_terbaru,
+        "last7_start": last7_start,
+        "month_start": month_start,
+    })
+    return render_template('laporan_home.html', **ctx)
+
 @app.route('/laporan/periodik')
 def laporan_periodik_redirect():
     return redirect(url_for('laporan_home', view='periodik'))
+
+@app.route('/laporan/periodik', methods=['GET'])
+def laporan_periodik():
+    """Halaman Laporan Periodik khusus (template: laporan_periodik.html)"""
+    today = date.today()
+    default_start = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    default_end   = today.strftime("%Y-%m-%d")
+
+    start_str = (request.args.get('start') or default_start).strip()
+    end_str   = (request.args.get('end') or default_end).strip()
+    status    = (request.args.get('status') or 'all').strip()  # all|lunas|hutang
+
+    data = compute_laporan_periodik(start_str, end_str, status)
+
+    return render_template(
+        'laporan_periodik.html',
+        start=start_str,
+        end=end_str,
+        status=status,
+        **data
+    )
 
 # ==================== TRANSAKSI LIST/DETAIL ====================
 @app.route('/transaksi')
@@ -1656,6 +1972,267 @@ def rooms_list():
             .filter(RoomItem.room_id == r.id).scalar() or 0
         summaries[r.id] = total_item
     return render_template('rooms_list.html', rooms_open=rooms_open, rooms_closed=rooms_closed, summaries=summaries)
+
+def csv_response(filename: str, header: list, rows: list):
+    """Bikin response CSV untuk diunduh."""
+    si = io.StringIO()
+    cw = csv.writer(si)
+    if header:
+        cw.writerow(header)
+    for r in rows:
+        cw.writerow(r)
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-Type"] = "text/csv; charset=utf-8"
+    return output
+
+@app.route('/settings/data', methods=['GET', 'POST'], endpoint='settings_data')
+def settings_data():
+    """
+    Halaman Ekspor/Impor Data Master: Produk, Kategori, Customer (CSV).
+    - GET: tampilkan halaman.
+    - POST (action=...):
+        - export_produk
+        - export_kategori
+        - export_customer
+        - import_produk
+        - import_kategori
+        - import_customer
+    """
+    if request.method == 'POST':
+        action = (request.form.get('action') or '').strip()
+
+        # ========== EXPORTS ==========
+        if action == 'export_produk':
+            rows = []
+            for p in Produk.query.order_by(Produk.id.asc()).all():
+                rows.append([
+                    p.id, p.nama, p.harga or 0, p.hpp or 0, p.stok or 0,
+                    (p.kategori.nama if p.kategori else ''), p.is_manufaktur or 0, (p.foto or '')
+                ])
+            header = ["id", "nama", "harga", "hpp", "stok", "kategori", "is_manufaktur", "foto"]
+            return csv_response("produk.csv", header, rows)
+
+        if action == 'export_kategori':
+            rows = []
+            for k in Kategori.query.order_by(Kategori.id.asc()).all():
+                rows.append([k.id, k.nama])
+            return csv_response("kategori.csv", ["id", "nama"], rows)
+
+        if action == 'export_customer':
+            rows = []
+            for c in Customer.query.order_by(Customer.id.asc()).all():
+                rows.append([c.id, c.nama, c.email, c.no_telepon or '', c.alamat or ''])
+            return csv_response("customer.csv", ["id", "nama", "email", "no_telepon", "alamat"], rows)
+
+        # ========== IMPORTS ==========
+        if action in ('import_produk', 'import_kategori', 'import_customer'):
+            file = request.files.get('file')
+            if not file or not file.filename:
+                flash("File CSV belum dipilih.", "error")
+                return redirect(url_for('settings_data'))
+
+            try:
+                stream = io.StringIO(file.stream.read().decode('utf-8', errors='ignore'))
+                reader = csv.DictReader(stream)
+            except Exception as e:
+                flash(f"Gagal membaca CSV: {e}", "error")
+                return redirect(url_for('settings_data'))
+
+            try:
+                if action == 'import_produk':
+                    # Kolom yang diterima: id (opsional), nama, harga, hpp, stok, kategori, is_manufaktur, foto
+                    # Jika 'kategori' berisi nama yang belum ada → dibuat otomatis
+                    for row in reader:
+                        nama = (row.get('nama') or '').strip()
+                        if not nama:
+                            continue
+                        harga = int(row.get('harga') or 0)
+                        hpp   = int(row.get('hpp') or 0)
+                        stok  = int(row.get('stok') or 0)
+                        kat_nama = (row.get('kategori') or '').strip()
+                        is_manu  = int(row.get('is_manufaktur') or 0)
+                        foto     = (row.get('foto') or '').strip()
+
+                        kat_obj = None
+                        if kat_nama:
+                            kat_obj = Kategori.query.filter_by(nama=kat_nama).first()
+                            if not kat_obj:
+                                kat_obj = Kategori(nama=kat_nama)
+                                db.session.add(kat_obj)
+                                db.session.flush()
+
+                        pid = row.get('id')
+                        if pid and str(pid).isdigit():
+                            p = Produk.query.get(int(pid))
+                        else:
+                            p = None
+
+                        if p:
+                            # update
+                            p.nama = nama
+                            p.harga = harga
+                            p.hpp = hpp
+                            p.stok = stok
+                            p.kategori_id = kat_obj.id if kat_obj else None
+                            p.is_manufaktur = 1 if is_manu else 0
+                            if foto:
+                                p.foto = foto
+                        else:
+                            # create
+                            p = Produk(
+                                nama=nama,
+                                harga=harga, hpp=hpp, stok=stok,
+                                kategori_id=kat_obj.id if kat_obj else None,
+                                is_manufaktur=1 if is_manu else 0,
+                                foto=foto or None
+                            )
+                            db.session.add(p)
+
+                    db.session.commit()
+                    flash("Impor Produk selesai.", "success")
+
+                elif action == 'import_kategori':
+                    # Kolom yang diterima: id (opsional), nama
+                    for row in reader:
+                        nama = (row.get('nama') or '').strip()
+                        if not nama:
+                            continue
+                        kid = (row.get('id') or '').strip()
+                        if kid.isdigit():
+                            k = Kategori.query.get(int(kid))
+                        else:
+                            k = Kategori.query.filter_by(nama=nama).first()
+
+                        if k:
+                            k.nama = nama
+                        else:
+                            k = Kategori(nama=nama)
+                            db.session.add(k)
+                    db.session.commit()
+                    flash("Impor Kategori selesai.", "success")
+
+                elif action == 'import_customer':
+                    # Kolom diterima: id(opsional), nama, email, no_telepon, alamat
+                    for row in reader:
+                        nama = (row.get('nama') or '').strip()
+                        email= (row.get('email') or '').strip()
+                        if not nama or not email:
+                            continue
+                        no   = (row.get('no_telepon') or '').strip()
+                        alamat = (row.get('alamat') or '').strip()
+                        cid = (row.get('id') or '').strip()
+
+                        if cid.isdigit():
+                            c = Customer.query.get(int(cid))
+                        else:
+                            c = None
+
+                        if c:
+                            c.nama = nama
+                            c.email = email
+                            c.no_telepon = no or None
+                            c.alamat = alamat or None
+                        else:
+                            c = Customer(nama=nama, email=email, no_telepon=no or None, alamat=alamat or None)
+                            db.session.add(c)
+                    db.session.commit()
+                    flash("Impor Customer selesai.", "success")
+
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Gagal impor: {e}", "error")
+
+            return redirect(url_for('settings_data'))
+
+        flash("Aksi tidak dikenali.", "error")
+        return redirect(url_for('settings_data'))
+
+    # GET
+    return render_template('settings_data.html')
+
+
+@app.route('/settings/report', methods=['GET', 'POST'], endpoint='settings_report')
+def settings_report():
+    """
+    Halaman Export Laporan Transaksi (CSV).
+    - GET: form pilih periode dan tipe laporan
+    - POST: kirim file CSV
+    """
+    today = date.today()
+    default_start = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    default_end   = today.strftime("%Y-%m-%d")
+
+    if request.method == 'POST':
+        start_str = (request.form.get('start') or default_start).strip()
+        end_str   = (request.form.get('end') or default_end).strip()
+        tipe      = (request.form.get('tipe') or 'summary').strip()  # 'summary' / 'detail'
+
+        # ambil transaksi periode
+        trs = (Transaksi.query
+               .filter(Transaksi.tanggal >= start_str,
+                       Transaksi.tanggal <= end_str)
+               .order_by(Transaksi.id.asc())
+               .all())
+
+        # kalkulasi sisa & laba approx per transaksi
+        if tipe == 'summary':
+            header = ["id", "tanggal", "customer", "total", "bayar", "sisa", "hpp_cost", "laba"]
+            rows = []
+            for t in trs:
+                _bayar = t.bayar or 0
+                _total = t.total or 0
+                _sisa  = t.sisa if t.sisa is not None else max(0, _total - _bayar)
+
+                # hpp_cost approx = Σ(item.qty × produk.hpp saat ini)
+                hpp_cost = 0
+                for it in t.item_transaksi:
+                    p = it.produk
+                    if p:
+                        hpp_cost += (p.hpp or 0) * (it.jumlah or 0)
+                laba = max(0, _total - hpp_cost)
+
+                rows.append([
+                    t.id,
+                    t.tanggal,
+                    (t.customer.nama if t.customer else ''),
+                    _total, _bayar, _sisa,
+                    hpp_cost, laba
+                ])
+            filename = f"laporan_summary_{start_str}_to_{end_str}.csv"
+            return csv_response(filename, header, rows)
+
+        else:
+            # detail: per item transaksi (dengan produk)
+            header = ["trx_id", "tanggal", "customer", "produk", "qty", "harga_jual_satuan", "subtotal", "hpp_satuan(approx)", "hpp_total(approx)"]
+            rows = []
+            for t in trs:
+                cust = (t.customer.nama if t.customer else '')
+                for it in t.item_transaksi:
+                    p = it.produk
+                    if not p:
+                        continue
+                    qty = it.jumlah or 0
+                    # kita tidak menyimpan harga_satuan snapshot di ItemTransaksi.
+                    # maka perhitungan subtotal approx = qty × harga produk saat ini (bisa beda dari saat transaksi)
+                    # Kalau Anda punya field harga snapshot, gunakan itu di sini.
+                    harga_jual_satuan = p.harga or 0
+                    subtotal = harga_jual_satuan * qty
+
+                    hpp_satuan = p.hpp or 0
+                    hpp_total  = hpp_satuan * qty
+
+                    rows.append([
+                        t.id, t.tanggal, cust,
+                        p.nama, qty, harga_jual_satuan, subtotal, hpp_satuan, hpp_total
+                    ])
+            filename = f"laporan_detail_{start_str}_to_{end_str}.csv"
+            return csv_response(filename, header, rows)
+
+    # GET
+    return render_template('settings_report.html',
+                           default_start=default_start,
+                           default_end=default_end)    
 
 # ==================== START ====================
 if __name__ == "__main__":

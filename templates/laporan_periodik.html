@@ -82,33 +82,43 @@
     <div class="cards">
       <div class="card">
         <div class="t">Total Transaksi</div>
-        <div class="v">{{ total_trx }}</div>
+        <div class="v">{{ total_trx or 0 }}</div>
       </div>
       <div class="card">
         <div class="t">Total Penjualan</div>
-        <div class="v">Rp {{ "{:,}".format(total_penjualan) }}</div>
+        <div class="v">{{ rupiah(total_penjualan or 0) }}</div>
       </div>
       <div class="card">
         <div class="t">Total Dibayar</div>
-        <div class="v">Rp {{ "{:,}".format(total_dibayar) }}</div>
+        <div class="v">{{ rupiah(total_dibayar or 0) }}</div>
       </div>
       <div class="card">
         <div class="t">Total Sisa (Hutang)</div>
-        <div class="v">Rp {{ "{:,}".format(total_sisa) }}</div>
+        <div class="v">{{ rupiah(total_sisa or 0) }}</div>
       </div>
       <div class="card">
         <div class="t">Rata-rata Ticket</div>
-        <div class="v">Rp {{ "{:,}".format(avg_ticket|round|int) }}</div>
+        <div class="v">{{ rupiah((avg_ticket or 0)|round|int) }}</div>
       </div>
     </div>
 
-    <!-- (Opsional) angka lain -->
-    <div style="margin-bottom:10px; color:#6b7280;">
-      Total item terjual: <strong>{{ total_item_terjual }}</strong>
+    <div class="cards" style="margin-top:10px;">
+      <div class="card">
+        <div class="t">Total Item Terjual</div>
+        <div class="v">{{ total_item_terjual or 0 }}</div>
+      </div>
+      <div class="card">
+        <div class="t">HPP (approx)</div>
+        <div class="v">{{ rupiah(total_hpp_cost or 0) }}</div>
+      </div>
+      <div class="card">
+        <div class="t">Laba Periode (approx)</div>
+        <div class="v">{{ rupiah(total_laba or 0) }}</div>
+      </div>
     </div>
 
     <!-- Drill-down: Daftar transaksi -->
-    <div class="panel" style="padding:0;">
+    <div class="panel" style="padding:0; margin-top:10px;">
       <table>
         <thead>
           <tr>
@@ -128,9 +138,9 @@
             <td>#{{ r.id }}</td>
             <td>{{ r.tanggal }}</td>
             <td>{{ r.customer }}</td>
-            <td class="right">Rp {{ "{:,}".format(r.total) }}</td>
-            <td class="right">Rp {{ "{:,}".format(r.bayar) }}</td>
-            <td class="right">Rp {{ "{:,}".format(r.sisa) }}</td>
+            <td class="right">{{ rupiah(r.total) }}</td>
+            <td class="right">{{ rupiah(r.bayar) }}</td>
+            <td class="right">{{ rupiah(r.sisa) }}</td>
             <td>
               {% if r.status == 'HUTANG' %}
                 <span class="badge hutang">HUTANG</span>

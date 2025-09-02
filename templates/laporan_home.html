@@ -2,321 +2,421 @@
 {% block title %}Laporan & Analitik{% endblock %}
 
 {% block head %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  :root{
-    --card:#fff; --border:#e6e8f0; --muted:#6b7280; --text:#111827;
-    --brand:#007bff; --brand-hover:#0064cf; --ring: rgba(0,123,255,.25);
-    --radius:12px; --shadow:0 10px 25px rgba(0,0,0,.06);
-    --ok:#16a34a; --danger:#ef4444; --info:#0ea5e9;
-  }
-  .wrap{ display:grid; grid-template-columns: 220px 1fr; gap:14px; }
-  @media (max-width: 900px){ .wrap{ grid-template-columns: 1fr; } }
+  .cards { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+  @media (max-width: 960px){ .cards{ grid-template-columns:1fr; } }
 
-  .panel{
-    background:var(--card); border:1px solid var(--border);
-    border-radius:var(--radius); box-shadow: var(--shadow);
-  }
-  .menu{ padding:12px; }
-  .menu h3{ margin:0 0 8px; font-size:15px; color:#374151; }
-  .menu a{
-    display:block; padding:10px 12px; border-radius:10px; text-decoration:none; color:#111827; border:1px solid var(--border);
-    margin-bottom:8px; transition: background .15s ease, border-color .15s ease;
-  }
-  .menu a.active{ background:#eef4ff; border-color:#cfe3ff; color:#0b3d91; font-weight:800; }
-  .menu a:hover{ background:#f8fafc; }
-
-  .content{ padding:12px; }
-
-  .kpis{ display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; }
-  @media (max-width: 1100px){ .kpis{ grid-template-columns: repeat(3,1fr); } }
-  @media (max-width: 700px){ .kpis{ grid-template-columns: repeat(2,1fr); } }
-  .kpi{
-    background:#fff; border:1px solid var(--border); border-radius:12px; padding:12px;
-  }
-  .kpi .label{ color:#6b7280; font-size:12px; margin-bottom:6px;}
-  .kpi .value{ font-size:20px; font-weight:900; }
-  .kpi .sub{ font-size:12px; color:#6b7280; }
-
-  .grid-2{ display:grid; grid-template-columns: 1.2fr .8fr; gap:12px; margin-top:12px; }
-  @media (max-width: 900px){ .grid-2{ grid-template-columns:1fr; } }
-
-  .card{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:12px; }
-  .card h4{ margin:0 0 8px; font-size:16px; }
-
-  .bars{ display:flex; align-items:flex-end; gap:8px; height:140px; padding:10px; background:#fafbff; border:1px dashed #dfe6ff; border-radius:10px; }
-  .bar{
-    width: 24px; background:linear-gradient(180deg, #7cb3ff, #3f83f8);
-    border-radius:6px 6px 0 0; position:relative;
-  }
-  .bar label{
-    position:absolute; bottom:-18px; left:50%; transform:translateX(-50%);
-    font-size:11px; color:#6b7280; white-space:nowrap;
-  }
-  .bar .val{
-    position:absolute; top:-20px; left:50%; transform:translateX(-50%);
-    font-size:11px; background:#0b3d91; color:#fff; padding:2px 6px; border-radius:10px;
-    display:none;
-  }
-  .bar:hover .val{ display:block; }
-
-  table{ width:100%; border-collapse: collapse; }
-  th, td{ border:1px solid #eaeaea; padding:8px; text-align:left; }
-  th{ background:#f7f8fb; }
-  .right{ text-align:right; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; }
+  .card h3{ margin:0 0 6px 0; font-size:14px; color:#6b7280; font-weight:700; }
+  .num { font-size:20px; font-weight:800; }
   .muted{ color:#6b7280; font-size:12px; }
-  .status-badge{
-    display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:12px;
-    padding:4px 8px; border-radius:999px; border:1px solid #eaeaea;
-  }
-  .status-lunas{ background:#e7fff0; color:#047857; border-color:#bbf7d0; }
-  .status-hutang{ background:#fff4f3; color:#b91c1c; border-color:#fecaca; }
 
-  /* Periodik */
-  .filters{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
-  .control{
-    min-width: 180px; padding:8px 10px; border:1px solid var(--border);
-    border-radius:10px; outline:none; background:#fff;
-    transition: box-shadow .15s ease, border-color .15s ease;
-  }
-  .control:focus{ border-color:#cfe3ff; box-shadow:0 0 0 4px var(--ring); }
-  .btn{ border:none; border-radius:10px; padding:9px 12px; cursor:pointer; font-weight:800; color:#fff; background:var(--brand); }
-  .btn:hover{ background:var(--brand-hover); }
-  .btn-muted{ background:#6b7280; }
-  .cards{ display:grid; grid-template-columns: repeat(5,1fr); gap:10px; }
-  @media (max-width: 1100px){ .cards{ grid-template-columns: repeat(3,1fr); } }
-  @media (max-width: 700px){ .cards{ grid-template-columns: repeat(2,1fr); } }
+  .section-title{ font-size:18px; margin:8px 0; font-weight:800; }
+  table{ width:100%; border-collapse:collapse; }
+  th, td{ border-bottom:1px solid #eee; padding:8px; text-align:left; }
+  th{ background:#f9fafb; color:#6b7280; font-size:13px; }
+  .right{ text-align:right; }
+  .wrap{ max-width:1160px; margin:0 auto; }
+  .tabs{ display:flex; gap:10px; margin-bottom:12px; }
+  .tab{ display:inline-block; padding:8px 12px; border-radius:8px; background:#eef2ff; color:#1f2937; text-decoration:none; border:1px solid #c7d2fe; font-weight:700; }
+  .tab.active{ background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+  .charts { display:grid; grid-template-columns: 2fr 1fr; gap:12px; margin-top:12px; }
+  @media (max-width: 1080px){ .charts{ grid-template-columns:1fr; } }
+
+  .chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; }
+  .chart-title{ font-size:14px; color:#6b7280; font-weight:700; margin-bottom:6px; }
 </style>
 {% endblock %}
 
 {% block content %}
-
 <div class="wrap">
+  <h1>Laporan & Analitik</h1>
 
-  <!-- MENU KIRI -->
-  <aside class="panel menu" aria-label="Jenis Laporan">
-    <h3>Jenis Laporan</h3>
-    <a href="{{ url_for('laporan_home', view='overview') }}" class="{{ 'active' if current_view=='overview' else '' }}">🏠 Overview (Dashboard)</a>
-    <a href="{{ url_for('laporan_home', view='periodik') }}" class="{{ 'active' if current_view=='periodik' else '' }}">📆 Penjualan Periodik</a>
-  </aside>
+  <div class="tabs">
+    <a class="tab {% if current_view=='overview' %}active{% endif %}" href="{{ url_for('laporan_home', view='overview') }}">Overview</a>
+    <a class="tab {% if current_view=='periodik' %}active{% endif %}" href="{{ url_for('laporan_home', view='periodik') }}">Laporan Periodik</a>
+  </div>
 
-  <!-- KONTEN KANAN -->
-  <section class="panel content">
-
-    {% if current_view == 'overview' %}
-      <h2 style="margin:0 0 8px;">Dashboard Ringkas</h2>
-      <div class="muted">Snapshot per {{ today.strftime('%d/%m/%Y') }}</div>
-
-      <!-- KPIs -->
-      <div class="kpis" style="margin-top:10px;">
-        <div class="kpi">
-          <div class="label">Omzet Hari Ini</div>
-          <div class="value">{{ rupiah(omzet_today or 0) }}</div>
-          <div class="sub">Transaksi: {{ trx_today or 0 }}</div>
-        </div>
-        <div class="kpi">
-          <div class="label">Omzet 7 Hari</div>
-          <div class="value">{{ rupiah(omzet_last7 or 0) }}</div>
-          <div class="sub">{{ last7_start.strftime('%d/%m') }} — {{ today.strftime('%d/%m') }}</div>
-        </div>
-        <div class="kpi">
-          <div class="label">Omzet Bulan Ini</div>
-          <div class="value">{{ rupiah(omzet_month or 0) }}</div>
-          <div class="sub">Mulai {{ month_start.strftime('%d/%m') }}</div>
-        </div>
-        <div class="kpi">
-          <div class="label">Hutang Outstanding</div>
-          <div class="value" style="color:#b91c1c;">{{ rupiah(total_hutang_outstanding or 0) }}</div>
-          <div class="sub">{{ count_hutang_outstanding or 0 }} transaksi</div>
-        </div>
-        <div class="kpi">
-          <div class="label">Top Produk (30 Hari)</div>
-          <div class="value">
-            {% if top_produk_30 and top_produk_30|length>0 %}
-              {{ top_produk_30[0].nama }}
-            {% else %}
-              -
-            {% endif %}
-          </div>
-          <div class="sub">Berdasarkan jumlah terjual</div>
-        </div>
+  {% if current_view == 'overview' %}
+    <!-- ====== OVERVIEW ====== -->
+    <div class="cards">
+      <div class="card">
+        <h3>Omzet Hari Ini</h3>
+        <div class="num">{{ rupiah(omzet_today or 0) }}</div>
+        <div class="muted">Transaksi: <strong>{{ trx_today or 0 }}</strong></div>
       </div>
+      <div class="card">
+        <h3>Laba Hari Ini (approx)</h3>
+        <div class="num">{{ rupiah(laba_today or 0) }}</div>
+        <div class="muted">Perkiraan (Total – Σ HPP×qty)</div>
+      </div>
+      <div class="card">
+        <h3>Hutang Outstanding</h3>
+        <div class="num">{{ rupiah(total_hutang_outstanding or 0) }}</div>
+        <div class="muted">Invoice: {{ count_hutang_outstanding or 0 }}</div>
+      </div>
+    </div>
 
-      <!-- grafik + top produk -->
-      <div class="grid-2">
-        <div class="card">
-          <h4>Grafik Omzet 7 Hari Terakhir</h4>
-          {% set vmax = (series_values | max) if series_values else 1 %}
-          <div class="bars">
-            {% for i in range(series_values|length) %}
-              {% set val = series_values[i] %}
-              {% set label = series_labels[i] %}
-              {% set h = ( (val*1.0 / (vmax if vmax>0 else 1)) * 120 ) | round(0, 'floor') %}
-              <div class="bar" style="height: {{ h + 10 }}px;">
-                <div class="val">{{ rupiah(val) }}</div>
-                <label>{{ label }}</label>
-              </div>
-            {% endfor %}
-          </div>
-          <div class="muted" style="margin-top:6px;">Hover bar untuk lihat nilai.</div>
-        </div>
+    <div class="cards" style="margin-top:12px;">
+      <div class="card">
+        <h3>Omzet 7 Hari</h3>
+        <div class="num">{{ rupiah(omzet_last7 or 0) }}</div>
+        <div class="muted">Periode: {{ last7_start.strftime("%d/%m") }} - {{ today.strftime("%d/%m") }}</div>
+      </div>
+      <div class="card">
+        <h3>Laba 7 Hari (approx)</h3>
+        <div class="num">{{ rupiah(laba_last7 or 0) }}</div>
+        <div class="muted">Periode sama</div>
+      </div>
+      <div class="card">
+        <h3>Omzet Bulan Ini</h3>
+        <div class="num">{{ rupiah(omzet_month or 0) }}</div>
+        <div class="muted">Mulai {{ month_start.strftime("%d/%m") }}</div>
+      </div>
+    </div>
 
-        <div class="card">
-          <h4>Top Produk 30 Hari (Qty)</h4>
+    <div class="cards" style="margin-top:12px;">
+      <div class="card">
+        <h3>Laba Bulan Ini (approx)</h3>
+        <div class="num">{{ rupiah(laba_month or 0) }}</div>
+        <div class="muted">Perkiraan</div>
+      </div>
+      <div class="card">
+        <h3>Top Produk 30 Hari (Qty)</h3>
+        {% if top_produk_30 %}
           <table>
             <thead><tr><th>Produk</th><th class="right">Qty</th></tr></thead>
             <tbody>
               {% for r in top_produk_30 %}
-              <tr>
-                <td>{{ r.nama }}</td>
-                <td class="right">{{ r.qty }}</td>
-              </tr>
-              {% else %}
-              <tr><td colspan="2" class="muted">Belum ada data.</td></tr>
+                <tr><td>{{ r.nama }}</td><td class="right">{{ r.qty }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+        {% else %}
+          <div class="muted">Belum ada data</div>
+        {% endif %}
       </div>
-
-      <!-- transaksi hari ini + hutang terbaru -->
-      <div class="grid-2" style="margin-top:12px;">
-        <div class="card">
-          <h4>Transaksi Hari Ini</h4>
+      <div class="card">
+        <h3>Hutang Terbaru</h3>
+        {% if hutang_terbaru %}
           <table>
-            <thead>
-              <tr>
-                <th>#</th><th>Tanggal</th><th>Pelanggan</th><th class="right">Total</th><th>Status</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for t in trx_today_rows %}
-              <tr>
-                <td>{{ t.id }}</td>
-                <td>{{ t.tanggal|format_tanggal }}</td>
-                <td>{{ t.customer.nama if t.customer else '-' }}</td>
-                <td class="right">{{ rupiah(t.total or 0) }}</td>
-                <td>
-                  {% set sisa = t.sisa or (t.total - (t.bayar or 0)) %}
-                  {% if sisa > 0 %}
-                    <span class="status-badge status-hutang">HUTANG</span>
-                  {% else %}
-                    <span class="status-badge status-lunas">LUNAS</span>
-                  {% endif %}
-                </td>
-                <td><a href="{{ url_for('transaksi_detail', id=t.id) }}">Detail</a></td>
-              </tr>
-              {% else %}
-              <tr><td colspan="6" class="muted">Belum ada transaksi hari ini.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="card">
-          <h4>Hutang Outstanding Terbaru</h4>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Pelanggan</th><th class="right">Sisa</th><th>Tempo</th><th>Aksi</th></tr>
-            </thead>
+            <thead><tr><th>#</th><th>Customer</th><th class="right">Sisa</th></tr></thead>
             <tbody>
               {% for t in hutang_terbaru %}
-              <tr>
-                <td>{{ t.id }}</td>
-                <td>{{ t.customer.nama if t.customer else '-' }}</td>
-                <td class="right">{{ rupiah(t.sisa or 0) }}</td>
-                <td>{{ t.jatuh_tempo or '-' }}</td>
-                <td><a href="{{ url_for('transaksi_detail', id=t.id) }}">Detail</a></td>
-              </tr>
-              {% else %}
-              <tr><td colspan="5" class="muted">Tidak ada hutang outstanding.</td></tr>
+                {% set _bayar = t.bayar or 0 %}
+                {% set _total = t.total or 0 %}
+                {% set _sisa = (t.sisa if t.sisa is not none else (_total - _bayar)) %}
+                {% if _sisa < 0 %}{% set _sisa = 0 %}{% endif %}
+                <tr>
+                  <td>#{{ t.id }}</td>
+                  <td>{{ t.customer.nama if t.customer else '-' }}</td>
+                  <td class="right">{{ rupiah(_sisa) }}</td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+        {% else %}
+          <div class="muted">Tidak ada</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ====== GRAFIK OVERVIEW ====== -->
+    <div class="charts">
+      <div class="chart-card">
+        <div class="chart-title">Grafik 7 Hari: Omzet & Laba</div>
+        <canvas id="chart7"></canvas>
       </div>
 
-    {% elif current_view == 'periodik' %}
-      <h2 style="margin:0 0 10px;">Laporan Penjualan Periodik</h2>
-
-      <!-- Filter -->
-      <form method="get" action="{{ url_for('laporan_home') }}" class="filters">
-        <input type="hidden" name="view" value="periodik">
-        <input type="date" name="start" class="control" value="{{ start }}">
-        <input type="date" name="end" class="control" value="{{ end }}">
-        <select name="status" class="control">
-          <option value="all"   {{ 'selected' if status=='all' }}>Semua</option>
-          <option value="lunas" {{ 'selected' if status=='lunas' }}>LUNAS</option>
-          <option value="hutang"{{ 'selected' if status=='hutang' }}>HUTANG</option>
-        </select>
-        <button class="btn" type="submit">Terapkan</button>
-        <a class="btn btn-muted" href="{{ url_for('laporan_home', view='periodik') }}" style="text-decoration:none;">Reset</a>
-      </form>
-
-      <!-- Ringkasan -->
-      <div class="cards" style="margin-bottom:10px;">
-        <div class="card">
-          <div class="label">Jumlah Transaksi</div>
-          <div class="value">{{ total_trx or 0 }}</div>
-        </div>
-        <div class="card">
-          <div class="label">Total Penjualan</div>
-          <div class="value">{{ rupiah(total_penjualan or 0) }}</div>
-        </div>
-        <div class="card">
-          <div class="label">Total Dibayar</div>
-          <div class="value">{{ rupiah(total_dibayar or 0) }}</div>
-        </div>
-        <div class="card">
-          <div class="label">Total Sisa (Hutang)</div>
-          <div class="value" style="color:#b91c1c;">{{ rupiah(total_sisa or 0) }}</div>
-        </div>
-        <div class="card">
-          <div class="label">Avg Ticket Size</div>
-          <div class="value">{{ rupiah(avg_ticket|int) }}</div>
-        </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribusi Hari Ini: Dibayar vs Sisa</div>
+        <canvas id="chartPieToday"></canvas>
       </div>
+    </div>
 
-      <!-- Drill-down daftar transaksi -->
-      <div class="card">
-        <h4>Detail Transaksi ({{ start }} s/d {{ end }})</h4>
+    <div class="chart-card" style="margin-top:12px;">
+      <div class="chart-title">Top Produk 30 Hari (Qty)</div>
+      <canvas id="chartTop30"></canvas>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="section-title">Transaksi Hari Ini</div>
+      {% if trx_today_rows %}
         <table>
           <thead>
-            <tr>
-              <th>#</th><th>Tanggal</th><th>Pelanggan</th>
-              <th class="right">Total</th><th class="right">Bayar</th><th class="right">Sisa</th>
-              <th>Status</th><th>Aksi</th>
-            </tr>
+            <tr><th>#</th><th>Tanggal</th><th>Customer</th><th class="right">Total</th><th class="right">Status</th></tr>
           </thead>
           <tbody>
-            {% for r in drill_rows %}
-            <tr>
-              <td>{{ r.id }}</td>
-              <td>{{ r.tanggal|format_tanggal }}</td>
-              <td>{{ r.customer }}</td>
-              <td class="right">{{ rupiah(r.total) }}</td>
-              <td class="right">{{ rupiah(r.bayar) }}</td>
-              <td class="right">{{ rupiah(r.sisa) }}</td>
-              <td>
-                {% if r.status == 'HUTANG' %}
-                  <span class="status-badge status-hutang">HUTANG</span>
-                {% else %}
-                  <span class="status-badge status-lunas">LUNAS</span>
-                {% endif %}
-              </td>
-              <td><a href="{{ url_for('transaksi_detail', id=r.id) }}">Detail</a></td>
-            </tr>
-            {% else %}
-            <tr><td colspan="8" class="muted">Tidak ada transaski pada periode/filter ini.</td></tr>
+            {% for t in trx_today_rows %}
+              {% set _bayar = t.bayar or 0 %}
+              {% set _total = t.total or 0 %}
+              {% set _sisa = (t.sisa if t.sisa is not none else (_total - _bayar)) %}
+              {% if _sisa < 0 %}{% set _sisa = 0 %}{% endif %}
+              <tr>
+                <td><a href="{{ url_for('transaksi_detail', id=t.id) }}">#{{ t.id }}</a></td>
+                <td>{{ t.tanggal }}</td>
+                <td>{{ t.customer.nama if t.customer else '-' }}</td>
+                <td class="right">{{ rupiah(t.total or 0) }}</td>
+                <td class="right">{{ 'HUTANG' if _sisa > 0 else 'LUNAS' }}</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
+      {% else %}
+        <div class="muted">Belum ada transaksi.</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if current_view == 'periodik' %}
+    <!-- ====== PERIODIK ====== -->
+    <div class="card">
+      <form method="get" class="row">
+        <input type="hidden" name="view" value="periodik">
+        <div>
+          <label>Mulai</label>
+          <input class="control" type="date" name="start" value="{{ start }}">
+        </div>
+        <div>
+          <label>Sampai</label>
+          <input class="control" type="date" name="end" value="{{ end }}">
+        </div>
+        <div>
+          <label>Status</label>
+          <select class="control" name="status">
+            <option value="all"   {% if status=='all' %}selected{% endif %}>Semua</option>
+            <option value="lunas" {% if status=='lunas' %}selected{% endif %}>Lunas</option>
+            <option value="hutang"{% if status=='hutang' %}selected{% endif %}>Hutang</option>
+          </select>
+        </div>
+        <div style="align-self:end;"><button class="btn btn-primary" type="submit">Terapkan</button></div>
+      </form>
+    </div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <div class="chart-title">Grafik Periode: Omzet & Laba</div>
+        <canvas id="chartPeriod"></canvas>
       </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribusi Periode: Dibayar vs Sisa</div>
+        <canvas id="chartPiePeriod"></canvas>
+      </div>
+    </div>
 
-    {% else %}
-      <p class="muted">Silakan pilih jenis laporan di panel kiri.</p>
-    {% endif %}
+    <div class="chart-card" style="margin-top:12px;">
+      <div class="chart-title">Top Produk Periode (Qty)</div>
+      <canvas id="chartTopPeriod"></canvas>
+    </div>
 
-  </section>
+    <div class="card" style="margin-top:12px;">
+      <div class="section-title">Rincian Transaksi</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tanggal</th>
+            <th>Customer</th>
+            <th class="right">Total</th>
+            <th class="right">HPP (approx)</th>
+            <th class="right">Laba (approx)</th>
+            <th class="right">Dibayar</th>
+            <th class="right">Sisa</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in drill_rows %}
+            <tr>
+              <td><a href="{{ url_for('transaksi_detail', id=r.id) }}">#{{ r.id }}</a></td>
+              <td>{{ r.tanggal }}</td>
+              <td>{{ r.customer }}</td>
+              <td class="right">{{ rupiah(r.total) }}</td>
+              <td class="right">{{ rupiah(r.hpp_cost) }}</td>
+              <td class="right">{{ rupiah(r.laba) }}</td>
+              <td class="right">{{ rupiah(r.bayar) }}</td>
+              <td class="right">{{ rupiah(r.sisa) }}</td>
+              <td>{{ r.status }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="9">Tidak ada transaksi pada periode ini.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
 </div>
 
+{% if current_view == 'overview' %}
+<script>
+(function(){
+  function initCharts(){
+    try {
+      const labels7   = {{ series_labels|tojson|safe }};
+      const omzet7    = {{ series_omzet|tojson|safe }};
+      const laba7     = {{ series_laba|tojson|safe }};
+      const paidToday = {{ (paid_today or 0)|int }};
+      const sisaToday = {{ (sisa_today or 0)|int }};
+      const topNames  = {{ top30_names|tojson|safe }};
+      const topQtys   = {{ top30_qtys|tojson|safe }};
+
+      // Line: 7 Hari
+      new Chart(document.getElementById('chart7'), {
+        type: 'line',
+        data: {
+          labels: labels7,
+          datasets: [
+            {label:'Omzet', data: omzet7, borderColor:'#1d4ed8', backgroundColor:'rgba(29,78,216,.15)', tension:.3, fill:true},
+            {label:'Laba',  data: laba7,  borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.15)', tension:.3, fill:true},
+          ]
+        },
+        options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true } } }
+      });
+
+      // Pie: Hari Ini
+      new Chart(document.getElementById('chartPieToday'), {
+        type:'doughnut',
+        data:{ labels:['Dibayar','Sisa'], datasets:[{ data:[paidToday, sisaToday], backgroundColor:['#22c55e','#ef4444'] }] },
+        options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
+      });
+
+      // Bar: Top 30 hari
+      new Chart(document.getElementById('chartTop30'), {
+        type:'bar',
+        data:{ labels: topNames, datasets:[{ label:'Qty', data: topQtys, backgroundColor:'#f59e0b' }] },
+        options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+      });
+    } catch(e) {
+      console.error('Chart init error (overview):', e);
+    }
+  }
+
+  function ensureChartJSAndInit(){
+    if (window.Chart) { initCharts(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    s.onload = initCharts;
+    document.body.appendChild(s);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureChartJSAndInit);
+  } else {
+    ensureChartJSAndInit();
+  }
+})();
+</script>
+{% endif %}
+
+{% if current_view == 'periodik' %}
+<script>
+(function(){
+  function initCharts(){
+    try {
+      const pLabels = {{ period_labels|tojson|safe }};
+      const pOmzet  = {{ period_omzet|tojson|safe }};
+      const pLaba   = {{ period_laba|tojson|safe }};
+      const pPaid   = {{ (paid_sum or 0)|int }};
+      const pSisa   = {{ (sisa_sum or 0)|int }};
+      const pTopNm  = {{ top_names_p|tojson|safe }};
+      const pTopQty = {{ top_qtys_p|tojson|safe }};
+
+      // Line: Periode
+      new Chart(document.getElementById('chartPeriod'), {
+        type: 'line',
+        data: {
+          labels: pLabels,
+          datasets: [
+            {label:'Omzet', data: pOmzet, borderColor:'#1d4ed8', backgroundColor:'rgba(29,78,216,.15)', tension:.3, fill:true},
+            {label:'Laba',  data: pLaba,  borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.15)', tension:.3, fill:true},
+          ]
+        },
+        options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true } } }
+      });
+
+      // Pie: Periode
+      new Chart(document.getElementById('chartPiePeriod'), {
+        type:'doughnut',
+        data:{ labels:['Dibayar','Sisa'], datasets:[{ data:[pPaid, pSisa], backgroundColor:['#22c55e','#ef4444'] }] },
+        options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
+      });
+
+      // Bar: Top produk (periode)
+      new Chart(document.getElementById('chartTopPeriod'), {
+        type:'bar',
+        data:{ labels:pTopNm, datasets:[{ label:'Qty', data:pTopQty, backgroundColor:'#f59e0b' }] },
+        options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+      });
+    } catch(e) {
+      console.error('Chart init error (periodik):', e);
+    }
+  }
+
+  function ensureChartJSAndInit(){
+    if (window.Chart) { initCharts(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    s.onload = initCharts;
+    document.body.appendChild(s);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureChartJSAndInit);
+  } else {
+    ensureChartJSAndInit();
+  }
+})();
+</script>
+{% endif %}
+
+{% if current_view == 'periodik' %}
+<script>
+  // Data untuk periodik
+  const pLabels = {{ period_labels|tojson }};
+  const pOmzet  = {{ period_omzet|tojson }};
+  const pLaba   = {{ period_laba|tojson }};
+  const pPaid   = {{ (paid_sum or 0)|int }};
+  const pSisa   = {{ (sisa_sum or 0)|int }};
+  const pTopNm  = {{ top_names_p|tojson }};
+  const pTopQty = {{ top_qtys_p|tojson }};
+
+  // Line: Omzet & Laba per hari
+  new Chart(document.getElementById('chartPeriod'), {
+    type: 'line',
+    data: {
+      labels: pLabels,
+      datasets: [
+        {label:'Omzet', data: pOmzet, borderColor:'#1d4ed8', backgroundColor:'rgba(29,78,216,.15)', tension:.3, fill:true},
+        {label:'Laba',  data: pLaba,  borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.15)', tension:.3, fill:true},
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{ position:'top' } },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+
+  // Doughnut: Dibayar vs Sisa (periode)
+  new Chart(document.getElementById('chartPiePeriod'), {
+    type:'doughnut',
+    data:{
+      labels:['Dibayar','Sisa'],
+      datasets:[{ data:[pPaid, pSisa], backgroundColor:['#22c55e','#ef4444'] }]
+    },
+    options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
+  });
+
+  // Bar: Top produk periode
+  new Chart(document.getElementById('chartTopPeriod'), {
+    type:'bar',
+    data:{ labels:pTopNm, datasets:[{ label:'Qty', data:pTopQty, backgroundColor:'#f59e0b' }] },
+    options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+  });
+</script>
+{% endif %}
 {% endblock %}

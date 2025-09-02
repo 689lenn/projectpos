@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Ekspor Laporan Transaksi{% endblock %}
+
+{% block head %}
+<style>
+  .wrap{max-width:720px;margin:0 auto;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;}
+  .label{display:block;font-size:12px;color:#6b7280;font-weight:700;margin-bottom:6px;}
+  .control{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;outline:none;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width: 720px){ .row{grid-template-columns:1fr;} }
+  .btn{border:none;border-radius:10px;padding:10px 12px;color:#fff;background:#1d4ed8;cursor:pointer;font-weight:800;}
+  .btn:hover{filter:brightness(.95);}
+  .muted{color:#6b7280;font-size:12px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h1>Ekspor Laporan Transaksi</h1>
+
+  <div class="card">
+    <form method="post">
+      <div class="row">
+        <div>
+          <label class="label">Dari Tanggal</label>
+          <input class="control" type="date" name="start" value="{{ default_start }}">
+        </div>
+        <div>
+          <label class="label">Sampai Tanggal</label>
+          <input class="control" type="date" name="end" value="{{ default_end }}">
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label class="label">Tipe Laporan</label>
+        <select class="control" name="tipe">
+          <option value="summary">Summary per Transaksi</option>
+          <option value="detail">Detail per Item</option>
+        </select>
+      </div>
+
+      <div style="margin-top:10px;">
+        <button class="btn" type="submit">⬇️ Export CSV</button>
+      </div>
+
+      <div class="muted" style="margin-top:8px;">
+        * Laba/HPP bersifat <em>approx</em> berdasarkan HPP & harga produk saat ini.
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
